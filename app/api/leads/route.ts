@@ -56,7 +56,9 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const svc = await createServiceClient()
 
-  const telefono = normalizePhone(body.telefono)
+  // Para MX se normalizan 10 dígitos; para internacional se guarda el valor crudo
+  const rawTel = String(body.telefono ?? "").trim()
+  const telefono = normalizePhone(rawTel) || rawTel
   const email = normalizeEmail(body.email)
   const curp = normalizeCurp(body.curp)
   const folio = generateFolio()
