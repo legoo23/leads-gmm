@@ -1,9 +1,9 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import {
   ArrowLeft, Save, ChevronRight, User, Activity,
-  Stethoscope, Shield, CheckCircle, Phone, Building2, Tag
+  Stethoscope, Shield, CheckCircle, Tag, Link2, Copy, Check, Hospital
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input, Select, Textarea } from "@/components/ui/input"
@@ -30,15 +30,23 @@ interface Lead {
   fecha_contacto: string | null; fecha_conversion: string | null
   vendedores: { nombre: string; codigo_unico: string } | null
   aseguradoras: { nombre: string } | null
+  // Internamiento
+  tipo_ingreso: string | null; es_accidente: boolean | null
+  fecha_inicio_sintomas: string | null; mecanismo_ingreso: string | null
+  familiar_nombre: string | null; familiar_telefono: string | null
+  valorado_medico_previo: boolean | null; atenciones_previas_sgmm: boolean | null
+  antecedentes_enfermedad: string | null; numero_episodio: string | null
+  numero_siniestro: string | null; folio_programacion: string | null
 }
 
 const TABS = [
-  { key: "contacto",    label: "Contacto",   icon: User },
-  { key: "procedimiento", label: "Procedimiento", icon: Stethoscope },
-  { key: "seguro",      label: "Póliza GMM", icon: Shield },
-  { key: "cobertura",   label: "Cobertura",  icon: CheckCircle },
-  { key: "canal",       label: "Canal",      icon: Tag },
-  { key: "notas",       label: "Notas",      icon: Activity },
+  { key: "contacto",      label: "Contacto",      icon: User },
+  { key: "procedimiento", label: "Procedimiento",  icon: Stethoscope },
+  { key: "seguro",        label: "Póliza GMM",     icon: Shield },
+  { key: "cobertura",     label: "Cobertura",      icon: CheckCircle },
+  { key: "internamiento", label: "Internamiento",  icon: Hospital },
+  { key: "canal",         label: "Canal",          icon: Tag },
+  { key: "notas",         label: "Notas",          icon: Activity },
 ]
 
 export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol: string }) {
@@ -48,13 +56,49 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
   const [saving, setSaving] = useState(false)
   const [changingEtapa, setChangingEtapa] = useState(false)
   const [form, setForm] = useState<Partial<Lead>>({})
+  // Upload link state
+  const [uploadLink, setUploadLink] = useState<string | null>(null)
+  const [uploadExpiry, setUploadExpiry] = useState<string | null>(null)
+  const [generatingLink, setGeneratingLink] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
+  const [docsSeleccionados, setDocsSeleccionados] = useState<string[]>(["poliza", "ine"])
 
   useEffect(() => {
     fetch(`/api/leads/${leadId}`)
       .then((r) => r.json())
       .then(({ data }) => { setLead(data); setForm(data) })
       .finally(() => setLoading(false))
+    // Load existing upload token
+    fetch(`/api/leads/${leadId}/upload-token`)
+      .then((r) => r.json())
+      .then(({ data }) => {
+        if (data) { setUploadLink(data.link ?? null); setUploadExpiry(data.expires_at ?? null) }
+      })
+      .catch(() => {})
   }, [leadId])
+
+  const generateUploadLink = useCallback(async () => {
+    setGeneratingLink(true)
+    const res = await fetch(`/api/leads/${leadId}/upload-token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ docs_requeridos: docsSeleccionados }),
+    })
+    const { data } = await res.json()
+    if (data?.link) {
+      setUploadLink(data.link)
+      setUploadExpiry(data.expires_at)
+    }
+    setGeneratingLink(false)
+  }, [leadId, docsSeleccionados])
+
+  const copyLink = useCallback(() => {
+    if (uploadLink) {
+      navigator.clipboard.writeText(uploadLink)
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 2000)
+    }
+  }, [uploadLink])
 
   const set = (k: string) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -286,6 +330,135 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                     className="text-xs font-medium underline" style={{ color: "var(--accent)" }}>
                     Ver documento
                   </a>
+                </div>
+              )}
+            </>
+          )}
+
+          {tab === "internamiento" && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <Select label="Tipo de ingreso" value={form.tipo_ingreso ?? ""} onChange={set("tipo_ingreso")}>
+                  <option value="">— Sin definir —</option>
+                  <option value="urgencias">Urgencias</option>
+                  <option value="programado">Programado (con carta)</option>
+                </Select>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium" style={{ color: "var(--muted)" }}>¿Es accidente?</label>
+                  <select
+                    value={form.es_accidente === true ? "si" : form.es_accidente === false ? "no" : ""}
+                    onChange={(e) => setForm((f) => ({
+                      ...f, es_accidente: e.target.value === "si" ? true : e.target.value === "no" ? false : null,
+                    }))}
+                    className="h-9 px-3 rounded-lg border text-sm outline-none"
+                    style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }}
+                  >
+                    <option value="">Sin definir</option>
+                    <option value="si">Sí — Accidente</option>
+                    <option value="no">No — Enfermedad</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Fecha / inicio de síntomas" value={form.fecha_inicio_sintomas ?? ""} onChange={set("fecha_inicio_sintomas")} placeholder="ej: hace 3 días, 15/07/2026" />
+                <Input label="Número de episodio (brazalete)" value={form.numero_episodio ?? ""} onChange={set("numero_episodio")} />
+              </div>
+              <Input label="Mecanismo de ingreso" value={form.mecanismo_ingreso ?? ""} onChange={set("mecanismo_ingreso")} placeholder="Cómo y cuándo iniciaron los síntomas" />
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Familiar / acompañante" value={form.familiar_nombre ?? ""} onChange={set("familiar_nombre")} />
+                <Input label="Teléfono del familiar" value={form.familiar_telefono ?? ""} onChange={set("familiar_telefono")} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Número de siniestro (aseguradora)" value={form.numero_siniestro ?? ""} onChange={set("numero_siniestro")} />
+                <Input label="Folio de programación (vinculación)" value={form.folio_programacion ?? ""} onChange={set("folio_programacion")} />
+              </div>
+              <Input label="Antecedentes / historia clínica" value={form.antecedentes_enfermedad ?? ""} onChange={set("antecedentes_enfermedad")} placeholder="Enfermedades crónicas, cirugías previas, alergias" />
+              <div className="flex gap-6 text-sm mt-1">
+                {[
+                  { key: "valorado_medico_previo", label: "¿Valorado por médico previo?" },
+                  { key: "atenciones_previas_sgmm", label: "¿Atenciones previas con SGMM?" },
+                ].map(({ key, label }) => (
+                  <label key={key} className="flex items-center gap-2 cursor-pointer" style={{ color: "var(--muted)" }}>
+                    <input
+                      type="checkbox"
+                      checked={!!(form as Record<string, unknown>)[key]}
+                      onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.checked }))}
+                    />
+                    <span className="text-xs">{label}</span>
+                  </label>
+                ))}
+              </div>
+
+              {/* Upload link panel */}
+              {canEdit && (
+                <div className="mt-4 p-4 rounded-xl border" style={{ background: "var(--surface-2)", borderColor: "var(--border)" }}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Link2 size={13} style={{ color: "var(--accent)" }} />
+                    <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>Repositorio de documentos</span>
+                  </div>
+                  {uploadLink ? (
+                    <div className="space-y-2">
+                      <p className="text-xs" style={{ color: "var(--subtle)" }}>
+                        Link activo — vence {uploadExpiry ? new Date(uploadExpiry).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" }) : ""}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <input
+                          readOnly value={uploadLink}
+                          className="flex-1 h-8 px-3 text-xs rounded-lg border font-mono outline-none truncate"
+                          style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }}
+                        />
+                        <button
+                          onClick={copyLink}
+                          className="h-8 px-3 flex items-center gap-1.5 rounded-lg text-xs font-medium transition-colors"
+                          style={{ background: linkCopied ? "#ECFDF5" : "var(--surface)", border: "1px solid var(--border)", color: linkCopied ? "#059669" : "var(--accent)" }}
+                        >
+                          {linkCopied ? <Check size={12} /> : <Copy size={12} />}
+                          {linkCopied ? "¡Copiado!" : "Copiar"}
+                        </button>
+                      </div>
+                      <button
+                        onClick={generateUploadLink}
+                        disabled={generatingLink}
+                        className="text-xs underline"
+                        style={{ color: "var(--subtle)" }}
+                      >
+                        Generar nuevo link
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-xs" style={{ color: "var(--subtle)" }}>Selecciona los documentos a solicitar y genera un link seguro de 48h para que el paciente los suba.</p>
+                      <div className="flex flex-wrap gap-3">
+                        {[
+                          { k: "poliza", l: "Póliza" }, { k: "ine", l: "INE" },
+                          { k: "estudios", l: "Estudios" }, { k: "domicilio", l: "Comprobante domicilio" },
+                        ].map(({ k, l }) => (
+                          <label key={k} className="flex items-center gap-1.5 text-xs cursor-pointer" style={{ color: "var(--muted)" }}>
+                            <input
+                              type="checkbox"
+                              checked={docsSeleccionados.includes(k)}
+                              onChange={(e) => setDocsSeleccionados((prev) =>
+                                e.target.checked ? [...prev, k] : prev.filter((d) => d !== k)
+                              )}
+                            />
+                            {l}
+                          </label>
+                        ))}
+                      </div>
+                      <button
+                        onClick={generateUploadLink}
+                        disabled={generatingLink || docsSeleccionados.length === 0}
+                        className="flex items-center gap-1.5 h-8 px-4 rounded-lg text-xs font-medium transition-all"
+                        style={{
+                          background: "var(--accent)", color: "#fff",
+                          opacity: generatingLink || docsSeleccionados.length === 0 ? 0.6 : 1,
+                        }}
+                      >
+                        <Link2 size={11} />
+                        {generatingLink ? "Generando..." : "Generar link de documentos"}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </>
