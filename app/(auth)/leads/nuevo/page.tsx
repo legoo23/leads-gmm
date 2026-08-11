@@ -131,7 +131,7 @@ export default function NuevoLeadPage() {
       ...form,
       telefono:               buildPhoneValue(form.telefono, paises.telefono),
       telefono_alternativo:   buildPhoneValue(form.telefono_alternativo, paises.alt1) || null,
-      telefono_alternativo_2: buildPhoneValue(form.telefono_alternativo_2, paises.alt2) || null,
+      telefono_alternativo_2: null,
       id_aseguradora: parseInt(form.id_aseguradora),
     }
 
