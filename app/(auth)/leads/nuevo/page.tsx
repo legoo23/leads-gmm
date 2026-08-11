@@ -96,7 +96,7 @@ export default function NuevoLeadPage() {
     notas: "",
   })
 
-  const [paises, setPaises] = useState({ telefono: "MX", alt1: "MX", alt2: "MX" })
+  const [paises, setPaises] = useState({ telefono: "MX", alt1: "MX" })
 
   const set = (k: string) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -117,8 +117,6 @@ export default function NuevoLeadPage() {
       return "El teléfono debe tener 10 dígitos"
     if (paises.alt1 === "MX" && form.telefono_alternativo && form.telefono_alternativo.length !== 10)
       return "El teléfono alternativo debe tener 10 dígitos"
-    if (paises.alt2 === "MX" && form.telefono_alternativo_2 && form.telefono_alternativo_2.length !== 10)
-      return "El teléfono alternativo 2 debe tener 10 dígitos"
     return null
   }
 
@@ -192,7 +190,7 @@ export default function NuevoLeadPage() {
           </div>
 
           {/* Teléfonos */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <PhoneField
               label="Teléfono *"
               value={form.telefono}
@@ -207,13 +205,6 @@ export default function NuevoLeadPage() {
               pais={paises.alt1}
               onValueChange={(v) => setForm((f) => ({ ...f, telefono_alternativo: v }))}
               onPaisChange={(v) => setPaises((p) => ({ ...p, alt1: v }))}
-            />
-            <PhoneField
-              label="Tel. alternativo 2 (Opcional)"
-              value={form.telefono_alternativo_2}
-              pais={paises.alt2}
-              onValueChange={(v) => setForm((f) => ({ ...f, telefono_alternativo_2: v }))}
-              onPaisChange={(v) => setPaises((p) => ({ ...p, alt2: v }))}
             />
           </div>
 
