@@ -73,8 +73,16 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     delete updates.numero_poliza
   }
   if (body.nombre !== undefined) {
-    updates.nombre_enc = encryptField(body.nombre)
+    const n = String(body.nombre ?? "").trim().toUpperCase()
+    updates.nombre = n
+    updates.nombre_enc = encryptField(n)
   }
+  if (body.apellido_paterno !== undefined)
+    updates.apellido_paterno = body.apellido_paterno ? String(body.apellido_paterno).trim().toUpperCase() : null
+  if (body.apellido_materno !== undefined)
+    updates.apellido_materno = body.apellido_materno ? String(body.apellido_materno).trim().toUpperCase() : null
+  if (body.notas !== undefined)
+    updates.notas = body.notas ? String(body.notas).toUpperCase() : null
 
   // Auto-advance etapa (skip if caller is explicitly setting it)
   if (!body.etapa) {

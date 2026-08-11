@@ -91,6 +91,7 @@ export default function NuevoLeadPage() {
     procedimiento: "",
     urgencia: "electiva",
     id_aseguradora: "",
+    aseguradora_otro: "",
     numero_poliza: "",
     fuente: "formulario",
     fuente_especifica: "",
@@ -113,6 +114,8 @@ export default function NuevoLeadPage() {
     if (!form.apellido_paterno.trim()) return "El apellido paterno es requerido"
     if (!form.email.trim()) return "El email es requerido"
     if (!form.id_aseguradora) return "La aseguradora es requerida"
+    if (form.id_aseguradora === "otro" && !form.aseguradora_otro.trim())
+      return "Indica el nombre de la aseguradora"
     if (!form.telefono) return "El teléfono es requerido"
     if (paises.telefono === "MX" && form.telefono.length !== 10)
       return "El teléfono debe tener 10 dígitos"
@@ -128,12 +131,19 @@ export default function NuevoLeadPage() {
     setSaving(true)
     setError("")
 
+    const esOtroSeguro = form.id_aseguradora === "otro"
+    const notasFinales = esOtroSeguro && form.aseguradora_otro
+      ? `Aseguradora (pendiente de alta): ${form.aseguradora_otro.trim().toUpperCase()}${form.notas ? "\n" + form.notas : ""}`
+      : form.notas || null
+
+    const { aseguradora_otro: _ign, ...restForm } = form
     const payload = {
-      ...form,
+      ...restForm,
       telefono:               buildPhoneValue(form.telefono, paises.telefono),
       telefono_alternativo:   buildPhoneValue(form.telefono_alternativo, paises.alt1) || null,
       telefono_alternativo_2: null,
-      id_aseguradora: parseInt(form.id_aseguradora),
+      id_aseguradora: esOtroSeguro ? null : parseInt(form.id_aseguradora),
+      notas: notasFinales,
     }
 
     const res = await fetch("/api/leads", {
@@ -185,9 +195,9 @@ export default function NuevoLeadPage() {
 
           {/* Nombre */}
           <div className="grid grid-cols-3 gap-4">
-            <Input label="Nombre *" value={form.nombre} onChange={set("nombre")} placeholder="Nombre" required />
-            <Input label="Apellido paterno *" value={form.apellido_paterno} onChange={set("apellido_paterno")} required />
-            <Input label="Apellido materno (Opcional)" value={form.apellido_materno} onChange={set("apellido_materno")} />
+            <Input label="Nombre *" value={form.nombre} onChange={set("nombre")} placeholder="Nombre" required style={{ textTransform: "uppercase" }} />
+            <Input label="Apellido paterno *" value={form.apellido_paterno} onChange={set("apellido_paterno")} required style={{ textTransform: "uppercase" }} />
+            <Input label="Apellido materno (Opcional)" value={form.apellido_materno} onChange={set("apellido_materno")} style={{ textTransform: "uppercase" }} />
           </div>
 
           {/* Teléfonos */}
@@ -264,9 +274,20 @@ export default function NuevoLeadPage() {
             <Select label="Aseguradora *" value={form.id_aseguradora} onChange={set("id_aseguradora")} required>
               <option value="">Seleccionar aseguradora</option>
               {ASEGURADORAS.map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
+              <option value="otro">Otra (no está en la lista)</option>
             </Select>
             <Input label="Número de póliza (Opcional)" value={form.numero_poliza} onChange={set("numero_poliza")} />
           </div>
+          {form.id_aseguradora === "otro" && (
+            <Input
+              label="Nombre de la aseguradora *"
+              value={form.aseguradora_otro}
+              onChange={set("aseguradora_otro")}
+              placeholder="Nombre exacto de la aseguradora"
+              style={{ textTransform: "uppercase" }}
+              required
+            />
+          )}
         </section>
 
         {/* ── CANAL Y NOTAS ──────────────────────────────────────── */}
@@ -320,7 +341,7 @@ export default function NuevoLeadPage() {
           <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--subtle)" }}>
             Notas iniciales
           </h2>
-          <Textarea label="" value={form.notas} onChange={set("notas")} rows={3} placeholder="Contexto adicional, observaciones..." />
+          <Textarea label="" value={form.notas} onChange={set("notas")} rows={3} placeholder="Contexto adicional, observaciones..." style={{ textTransform: "uppercase" }} />
         </section>
 
         <div className="flex justify-end gap-3">

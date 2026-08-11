@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
     if (result.createLead) {
       const d = result.nextDatos
       const folio = generateFolio()
-      const nombreCompleto = d.nombre ?? (displayName || "Desde WhatsApp")
+      const nombreCompleto = (d.nombre ?? (displayName || "Desde WhatsApp")).toUpperCase()
       const { data: lead } = await svc.from("leads").insert({
         folio,
         nombre:                  nombreCompleto,
@@ -114,10 +114,10 @@ export async function POST(req: NextRequest) {
         prioridad:               "media",
         id_aseguradora:          d.id_aseguradora ?? null,
         numero_poliza_enc:       d.numero_poliza ? encryptField(String(d.numero_poliza)) : null,
-        diagnostico_principal:   d.sintomas ?? null,
+        diagnostico_principal:   d.sintomas ? d.sintomas.toUpperCase() : null,
         fecha_inicio_sintomas:   d.fecha_inicio_sintomas ?? null,
         valorado_medico_previo:  d.valorado_medico_previo ?? null,
-        antecedentes_enfermedad: d.antecedentes ?? null,
+        antecedentes_enfermedad: d.antecedentes ? d.antecedentes.toUpperCase() : null,
         atenciones_previas_sgmm: d.sgmm_previo ?? null,
         codigo_referido:         result.codigoReferido,
         id_vendedor:             result.idVendedor,

@@ -63,12 +63,17 @@ export async function POST(req: NextRequest) {
   const curp = normalizeCurp(body.curp)
   const folio = generateFolio()
 
+  const nombre = String(body.nombre ?? "").trim().toUpperCase()
+  const apellido_paterno = body.apellido_paterno ? String(body.apellido_paterno).trim().toUpperCase() : null
+  const apellido_materno = body.apellido_materno ? String(body.apellido_materno).trim().toUpperCase() : null
+  const notas = body.notas ? String(body.notas).toUpperCase() : null
+
   const row = {
     folio,
-    nombre: body.nombre,
-    apellido_paterno: body.apellido_paterno ?? null,
-    apellido_materno: body.apellido_materno ?? null,
-    nombre_enc: encryptField(body.nombre),
+    nombre,
+    apellido_paterno,
+    apellido_materno,
+    nombre_enc: encryptField(nombre),
     telefono_enc: encryptField(telefono),
     telefono_hash: hashField(telefono),
     email_enc: encryptField(email),
@@ -102,7 +107,7 @@ export async function POST(req: NextRequest) {
     en_cola_revision: body.en_cola_revision ?? false,
     etapa: "nuevo",
     estado: "activo",
-    notas: body.notas ?? null,
+    notas,
   }
 
   const { data, error } = await svc.from("leads").insert(row).select().single()

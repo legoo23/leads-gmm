@@ -7,7 +7,7 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, className, id, ...props }, ref) => {
+  ({ label, error, className, id, style: extraStyle, ...props }, ref) => {
     const inputId = id ?? label?.toLowerCase().replace(/\s+/g, "_")
     return (
       <div className="flex flex-col gap-1">
@@ -28,6 +28,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             background: "var(--surface)",
             borderColor: error ? "var(--negative)" : "var(--border)",
             color: "var(--text)",
+            ...extraStyle,
           }}
           {...props}
         />
@@ -88,7 +89,7 @@ interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
 }
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ label, error, className, id, ...props }, ref) => {
+  ({ label, error, className, id, style: extraStyle, ...props }, ref) => {
     const taId = id ?? label?.toLowerCase().replace(/\s+/g, "_")
     return (
       <div className="flex flex-col gap-1">
@@ -109,6 +110,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             background: "var(--surface)",
             borderColor: error ? "var(--negative)" : "var(--border)",
             color: "var(--text)",
+            ...extraStyle,
           }}
           rows={3}
           {...props}
