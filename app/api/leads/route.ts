@@ -98,6 +98,7 @@ export async function POST(req: NextRequest) {
     telefono_alternativo_2: body.telefono_alternativo_2 || null,
     email_alternativo:      body.email_alternativo       || null,
     fuente: body.fuente ?? "formulario",
+    fuente_especifica: body.fuente_especifica ?? null,
     en_cola_revision: body.en_cola_revision ?? false,
     etapa: "nuevo",
     estado: "activo",

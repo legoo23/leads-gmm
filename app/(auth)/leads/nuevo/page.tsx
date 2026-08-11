@@ -93,6 +93,7 @@ export default function NuevoLeadPage() {
     id_aseguradora: "",
     numero_poliza: "",
     fuente: "formulario",
+    fuente_especifica: "",
     notas: "",
   })
 
@@ -272,16 +273,54 @@ export default function NuevoLeadPage() {
         <section className="rounded-xl border p-5 space-y-4"
           style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
           <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--subtle)" }}>
-            Canal y notas
+            Canal de adquisición
           </h2>
-          <Select label="Fuente" value={form.fuente} onChange={set("fuente")}>
-            <option value="formulario">Formulario web</option>
-            <option value="llamada">Llamada</option>
-            <option value="qr">QR / Vendedor</option>
-            <option value="referido">Referido</option>
-            <option value="whatsapp_bot">WhatsApp Bot</option>
-          </Select>
-          <Textarea label="Notas iniciales" value={form.notas} onChange={set("notas")} rows={3} />
+          <p className="text-xs" style={{ color: "var(--subtle)" }}>
+            Esta información no podrá modificarse después. Captura el origen exacto del lead.
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <Select label="Canal principal" value={form.fuente} onChange={set("fuente")}>
+              <option value="formulario">Formulario web</option>
+              <option value="llamada">Llamada entrante</option>
+              <option value="qr">QR / Link de vendedor</option>
+              <option value="referido">Referido directo</option>
+              <option value="redes_sociales">Redes sociales</option>
+              <option value="whatsapp_bot">WhatsApp Bot (automático)</option>
+            </Select>
+
+            {/* Fuente específica — condicional según canal */}
+            {form.fuente === "redes_sociales" && (
+              <Select label="Red social específica" value={form.fuente_especifica} onChange={set("fuente_especifica")}>
+                <option value="">Seleccionar</option>
+                <option value="Instagram">Instagram</option>
+                <option value="Facebook">Facebook</option>
+                <option value="TikTok">TikTok</option>
+                <option value="YouTube">YouTube</option>
+                <option value="LinkedIn">LinkedIn</option>
+                <option value="Twitter/X">Twitter / X</option>
+                <option value="Google Ads">Google Ads</option>
+                <option value="Otro">Otro</option>
+              </Select>
+            )}
+            {form.fuente === "referido" && (
+              <Input label="¿Quién o qué lo refirió?" value={form.fuente_especifica} onChange={set("fuente_especifica")} placeholder="Nombre, médico, institución..." />
+            )}
+            {form.fuente === "llamada" && (
+              <Input label="Origen de la llamada" value={form.fuente_especifica} onChange={set("fuente_especifica")} placeholder="Ej: base de datos, contacto previo..." />
+            )}
+            {form.fuente === "formulario" && (
+              <Input label="Página / campaña de origen (Opcional)" value={form.fuente_especifica} onChange={set("fuente_especifica")} placeholder="Ej: landing verano, Google Ads..." />
+            )}
+          </div>
+        </section>
+
+        {/* ── NOTAS ──────────────────────────────────────────────── */}
+        <section className="rounded-xl border p-5 space-y-4"
+          style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
+          <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--subtle)" }}>
+            Notas iniciales
+          </h2>
+          <Textarea label="" value={form.notas} onChange={set("notas")} rows={3} placeholder="Contexto adicional, observaciones..." />
         </section>
 
         <div className="flex justify-end gap-3">

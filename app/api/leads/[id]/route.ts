@@ -18,7 +18,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   const svc = await createServiceClient()
   const { data, error } = await svc.from("leads")
-    .select(`*, vendedores(*), aseguradoras(*), medicos(*), hospitales:id_hospital(*)`)
+    .select(`*, vendedores(*), aseguradoras(*), medicos(*), hospitales:id_hospital(*), campanas:id_campana(nombre, codigo_unico)`)
     .eq("id", id)
     .single()
 

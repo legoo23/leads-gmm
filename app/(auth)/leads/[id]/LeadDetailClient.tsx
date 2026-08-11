@@ -22,11 +22,13 @@ interface Lead {
   telefono_alternativo_2: string | null; email: string | null; email_alternativo: string | null
   curp: string | null; fecha_nacimiento: string | null; estado_ciudad: string | null
   prioridad: string; etapa: string; estado: string; fuente: string | null
+  fuente_especifica: string | null
   codigo_referido: string | null; en_cola_revision: boolean
   notas: string | null; fecha_captura: string
   fecha_contacto: string | null; fecha_conversion: string | null
   vendedores: { nombre: string; codigo_unico: string } | null
   aseguradoras: { nombre: string } | null
+  campanas: { nombre: string; codigo_unico: string } | null
   // Padecimientos e Historia Clínica
   diagnostico_principal: string | null; diagnosticos_secundarios: string | null
   cirugias_previas: boolean | null; cirugias_previas_desc: string | null
@@ -60,6 +62,25 @@ interface Lead {
   valorado_medico_previo: boolean | null; atenciones_previas_sgmm: boolean | null
   antecedentes_enfermedad: string | null; numero_episodio: string | null
   numero_siniestro: string | null; folio_programacion: string | null
+}
+
+/* ─── Constantes de canal ────────────────────────────────────────── */
+const FUENTE_LABEL: Record<string, string> = {
+  whatsapp_bot:   "WhatsApp Bot",
+  formulario:     "Formulario web",
+  qr:             "QR / Vendedor",
+  referido:       "Referido directo",
+  llamada:        "Llamada entrante",
+  redes_sociales: "Redes sociales",
+}
+
+const FUENTE_STYLE: Record<string, { background: string; color: string }> = {
+  whatsapp_bot:   { background: "#ECFDF5", color: "#059669" },
+  formulario:     { background: "#EFF6FF", color: "#2563EB" },
+  qr:             { background: "#F5F3FF", color: "#7C3AED" },
+  referido:       { background: "#FFFBEB", color: "#D97706" },
+  llamada:        { background: "#FEF2F2", color: "#DC2626" },
+  redes_sociales: { background: "#F0F9FF", color: "#0EA5E9" },
 }
 
 /* ─── Constantes de pipeline ─────────────────────────────────────── */
@@ -586,29 +607,103 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
             </>
           )}
 
-          {/* ── CANAL ────────────────────────────────────────── */}
+          {/* ── CANAL (solo lectura — trazabilidad) ──────────── */}
           {activeTab === "canal" && (
-            <>
-              <div className="grid grid-cols-2 gap-4">
-                <Select label="Fuente" value={form.fuente ?? "formulario"} onChange={set("fuente")} disabled={ro}>
-                  <option value="formulario">Formulario web</option>
-                  <option value="llamada">Llamada</option>
-                  <option value="qr">QR / Vendedor</option>
-                  <option value="referido">Referido</option>
-                  <option value="whatsapp_bot">WhatsApp Bot</option>
-                </Select>
-                <Input label="Código referido" value={form.codigo_referido ?? ""} readOnly className="opacity-70" />
+            <div className="space-y-4">
+              {/* Badge solo lectura */}
+              <div className="flex items-center gap-2">
+                <Tag size={13} style={{ color: "var(--accent)" }} />
+                <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--subtle)" }}>
+                  Trazabilidad del lead
+                </span>
+                <span className="ml-auto text-xs px-2 py-0.5 rounded-full font-medium"
+                  style={{ background: "#FEF9C3", color: "#92400E" }}>
+                  🔒 Solo lectura
+                </span>
               </div>
-              {lead.vendedores && (
-                <div className="flex items-center gap-2 p-3 rounded-lg" style={{ background: "var(--surface-2)" }}>
-                  <Tag size={12} style={{ color: "var(--accent)" }} />
-                  <span className="text-xs" style={{ color: "var(--muted)" }}>
-                    Vendedor referidor: <strong style={{ color: "var(--text)" }}>{lead.vendedores.nombre}</strong>
-                    {" "}({lead.vendedores.codigo_unico})
-                  </span>
+
+              {/* Tarjeta principal de origen */}
+              <div className="rounded-xl border p-4 space-y-4" style={{ background: "var(--surface-2)", borderColor: "var(--border)" }}>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs" style={{ color: "var(--muted)" }}>Canal principal</span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="text-sm font-semibold px-2.5 py-0.5 rounded-full"
+                        style={FUENTE_STYLE[lead.fuente ?? ""] ?? FUENTE_STYLE.formulario}>
+                        {FUENTE_LABEL[lead.fuente ?? ""] ?? lead.fuente ?? "—"}
+                      </span>
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs" style={{ color: "var(--muted)" }}>Fuente específica</span>
+                    <span className="text-sm font-medium" style={{ color: lead.fuente_especifica ? "var(--text)" : "var(--subtle)" }}>
+                      {lead.fuente_especifica || "—"}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs" style={{ color: "var(--muted)" }}>Código referido</span>
+                    <span className="text-sm font-mono font-medium" style={{ color: lead.codigo_referido ? "var(--accent)" : "var(--subtle)" }}>
+                      {lead.codigo_referido || "Sin código"}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs" style={{ color: "var(--muted)" }}>Fecha de captura</span>
+                    <span className="text-sm font-medium" style={{ color: "var(--text)" }}>
+                      {new Date(lead.fecha_captura).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" })}
+                    </span>
+                  </div>
+                </div>
+
+                {lead.en_cola_revision && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium"
+                    style={{ background: "#FEF9C3", color: "#92400E", border: "1px solid #FDE68A" }}>
+                    ⏳ Lead en cola de revisión — aún no confirmado por agente
+                  </div>
+                )}
+              </div>
+
+              {/* Vendedor referidor */}
+              {lead.vendedores ? (
+                <div className="rounded-xl border p-4" style={{ borderColor: "var(--border)" }}>
+                  <p className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: "var(--subtle)" }}>
+                    Vendedor referidor
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>{lead.vendedores.nombre}</p>
+                      <p className="text-xs font-mono mt-0.5" style={{ color: "var(--accent)" }}>{lead.vendedores.codigo_unico}</p>
+                    </div>
+                    <span className="text-xs px-2.5 py-1 rounded-full font-medium"
+                      style={{ background: "#F5F3FF", color: "#7C3AED" }}>
+                      Con comisión
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed p-4 text-center" style={{ borderColor: "var(--border)" }}>
+                  <p className="text-xs" style={{ color: "var(--subtle)" }}>Sin vendedor referidor — lead sin comisión asignada</p>
                 </div>
               )}
-            </>
+
+              {/* Campaña vinculada */}
+              {lead.campanas && (
+                <div className="rounded-xl border p-4" style={{ borderColor: "var(--border)" }}>
+                  <p className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: "var(--subtle)" }}>
+                    Campaña vinculada
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>{lead.campanas.nombre}</p>
+                    <span className="text-xs font-mono px-2 py-0.5 rounded"
+                      style={{ background: "var(--surface-2)", color: "var(--muted)" }}>
+                      {lead.campanas.codigo_unico}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
           {/* ── NOTAS ────────────────────────────────────────── */}
