@@ -1,52 +1,37 @@
 /*
  * leads-gmm — Log de auditoría para acceso a datos personales
  * Copyright © 2026 Alejandro Legorreta Barrera. Todos los derechos reservados.
- *
- * Registra quién accedió a qué datos, cuándo y desde dónde.
- * Protección contra exfiltración masiva de datos.
  */
 
-import { createClient } from "@/lib/supabase/server"
-
-export type AuditAction =
-  | "leads:list"
-  | "leads:view"
-  | "leads:export"
-  | "personas:list"
-  | "personas:view"
-  | "comisiones:export"
-  | "auth:login"
-  | "auth:logout"
+import { createServiceClient } from "@/lib/supabase/server"
 
 interface AuditEntry {
-  action: AuditAction
-  userId?: string
-  resourceId?: string | number
-  meta?: Record<string, unknown>
+  accion: string
+  tabla?: string
+  id_registro?: string | number
+  id_usuario?: string
+  metadata?: Record<string, unknown>
   ip?: string
 }
 
 export async function logAudit(entry: AuditEntry): Promise<void> {
   try {
-    const supabase = await createClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from("audit_log") as any).insert({
-      accion: entry.action,
-      id_usuario: entry.userId ?? null,
-      id_recurso: entry.resourceId ? String(entry.resourceId) : null,
-      meta: entry.meta ?? null,
+    const svc = await createServiceClient()
+    await svc.from("audit_log").insert({
+      accion: entry.accion,
+      tabla: entry.tabla ?? null,
+      id_usuario: entry.id_usuario ?? null,
+      id_recurso: entry.id_registro ? String(entry.id_registro) : null,
+      meta: entry.metadata ?? null,
       ip: entry.ip ?? null,
-      timestamp: new Date().toISOString(),
     })
   } catch {
-    // Audit logging nunca debe interrumpir el flujo principal
+    // Never interrupt main flow
   }
 }
 
-// Límite de registros por respuesta de API — anti-exfiltración
 export const API_MAX_RECORDS = 50
 
-// Valida que el parámetro limit no exceda el máximo permitido
 export function sanitizeLimit(raw: string | null | undefined, defaultVal = 25): number {
   const n = parseInt(raw ?? String(defaultVal), 10)
   if (isNaN(n) || n < 1) return defaultVal

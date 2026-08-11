@@ -26,12 +26,14 @@ export function generateVendorCode(prefix: string, length = 6): string {
   return `${prefix.toUpperCase()}-${random}`
 }
 
-export function generateFolio(prefix: string, seq: number): string {
+export function generateFolio(): string {
+  const prefix = process.env.NEXT_PUBLIC_VENDOR_CODE_PREFIX ?? "GMM"
   const date = new Date()
   const yy = String(date.getFullYear()).slice(2)
   const mm = String(date.getMonth() + 1).padStart(2, "0")
   const dd = String(date.getDate()).padStart(2, "0")
-  return `${prefix}-${yy}${mm}${dd}-${String(seq).padStart(5, "0")}`
+  const rand = Array.from({ length: 4 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join("")
+  return `${prefix}-${yy}${mm}${dd}-${rand}`
 }
 
 export function cn(...classes: (string | undefined | false | null)[]): string {
