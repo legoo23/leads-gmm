@@ -1,17 +1,42 @@
 "use client"
 import { useState, useEffect } from "react"
-import { Plus, Megaphone, Calendar } from "lucide-react"
+import { Plus, Megaphone, Calendar, Copy, Check, QrCode } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Modal } from "@/components/ui/modal"
 import { Input, Select, Textarea } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { formatDate } from "@/lib/utils"
-import { PROCEDIMIENTOS } from "@/constants/procedimientos"
+import { TEMAS_SALUD } from "@/constants/campanas-salud"
 
 interface Campana {
-  id: number; nombre: string; procedimiento_target: string | null
-  descripcion: string | null; vigencia_inicio: string | null; vigencia_fin: string | null
-  activa: boolean; fecha_creacion: string
+  id: number
+  nombre: string
+  procedimiento_target: string | null
+  descripcion: string | null
+  vigencia_inicio: string | null
+  vigencia_fin: string | null
+  activa: boolean
+  fecha_creacion: string
+  codigo_unico: string | null
+}
+
+function CodigoChip({ codigo }: { codigo: string }) {
+  const [copied, setCopied] = useState(false)
+  function copy() {
+    navigator.clipboard.writeText(codigo).catch(() => {})
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1800)
+  }
+  return (
+    <button onClick={copy}
+      className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-mono font-medium transition-colors"
+      style={{ background: "var(--surface-2)", color: "var(--muted)" }}
+      title="Copiar código">
+      <QrCode size={11} />
+      {codigo}
+      {copied ? <Check size={10} color="#059669" /> : <Copy size={10} />}
+    </button>
+  )
 }
 
 export default function CampanasPage() {
@@ -20,7 +45,7 @@ export default function CampanasPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
-    nombre: "", procedimiento_target: "", descripcion: "",
+    nombre: "", categoria: "", subtema: "", descripcion: "",
     vigencia_inicio: "", vigencia_fin: "",
   })
 
@@ -32,22 +57,39 @@ export default function CampanasPage() {
   }
   useEffect(() => { load() }, [])
 
-  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-    setForm((f) => ({ ...f, [k]: e.target.value }))
+  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    setForm((f) => {
+      const next = { ...f, [k]: e.target.value }
+      if (k === "categoria") next.subtema = ""
+      return next
+    })
+  }
+
+  const temasDisponibles = form.categoria
+    ? TEMAS_SALUD.find((c) => c.categoria === form.categoria)?.temas ?? []
+    : []
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
+
+    const procedimiento_target = form.subtema || form.categoria || null
     const res = await fetch("/api/campanas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify({
+        nombre: form.nombre,
+        procedimiento_target,
+        descripcion: form.descripcion || null,
+        vigencia_inicio: form.vigencia_inicio || null,
+        vigencia_fin: form.vigencia_fin || null,
+      }),
     })
     if (res.ok) {
       const { data } = await res.json()
       setCampanas((p) => [data, ...p])
       setModalOpen(false)
-      setForm({ nombre: "", procedimiento_target: "", descripcion: "", vigencia_inicio: "", vigencia_fin: "" })
+      setForm({ nombre: "", categoria: "", subtema: "", descripcion: "", vigencia_inicio: "", vigencia_fin: "" })
     }
     setSaving(false)
   }
@@ -66,9 +108,13 @@ export default function CampanasPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        {loading && <div className="col-span-2 text-center py-12 text-xs" style={{ color: "var(--subtle)" }}>Cargando...</div>}
+        {loading && (
+          <div className="col-span-2 text-center py-12 text-xs" style={{ color: "var(--subtle)" }}>Cargando...</div>
+        )}
         {!loading && campanas.length === 0 && (
-          <div className="col-span-2 text-center py-16 text-xs" style={{ color: "var(--subtle)" }}>Sin campañas creadas</div>
+          <div className="col-span-2 text-center py-16 text-xs" style={{ color: "var(--subtle)" }}>
+            Sin campañas creadas
+          </div>
         )}
         {campanas.map((c) => {
           const hoy = new Date()
@@ -96,7 +142,7 @@ export default function CampanasPage() {
                   <p className="text-xs mt-0.5" style={{ color: "var(--muted)" }}>{c.procedimiento_target}</p>
                 )}
                 {c.descripcion && (
-                  <p className="text-xs mt-1" style={{ color: "var(--subtle)" }}>{c.descripcion}</p>
+                  <p className="text-xs mt-1 line-clamp-2" style={{ color: "var(--subtle)" }}>{c.descripcion}</p>
                 )}
               </div>
               {(c.vigencia_inicio || c.vigencia_fin) && (
@@ -107,6 +153,11 @@ export default function CampanasPage() {
                   {c.vigencia_fin ? formatDate(c.vigencia_fin) : "Sin fecha fin"}
                 </div>
               )}
+              {c.codigo_unico && (
+                <div className="pt-1 border-t" style={{ borderColor: "var(--border)" }}>
+                  <CodigoChip codigo={c.codigo_unico} />
+                </div>
+              )}
             </div>
           )
         })}
@@ -115,15 +166,32 @@ export default function CampanasPage() {
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Nueva campaña">
         <form onSubmit={handleCreate} className="space-y-4">
           <Input label="Nombre de la campaña *" value={form.nombre} onChange={set("nombre")} required />
-          <Select label="Procedimiento objetivo" value={form.procedimiento_target} onChange={set("procedimiento_target")}>
-            <option value="">— General —</option>
-            {PROCEDIMIENTOS.map((p) => <option key={p.codigo} value={p.nombre}>{p.nombre}</option>)}
+
+          {/* Tema de salud — dos selects en cascada */}
+          <Select label="Categoría de campaña" value={form.categoria} onChange={set("categoria")}>
+            <option value="">— General / Otra —</option>
+            {TEMAS_SALUD.map((c) => (
+              <option key={c.categoria} value={c.categoria}>{c.categoria}</option>
+            ))}
           </Select>
+
+          {form.categoria && (
+            <Select label="Tema específico" value={form.subtema} onChange={set("subtema")}>
+              <option value="">— Categoría completa —</option>
+              {temasDisponibles.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </Select>
+          )}
+
           <Textarea label="Descripción" value={form.descripcion} onChange={set("descripcion")} rows={2} />
           <div className="grid grid-cols-2 gap-4">
             <Input label="Vigencia inicio" type="date" value={form.vigencia_inicio} onChange={set("vigencia_inicio")} />
             <Input label="Vigencia fin" type="date" value={form.vigencia_fin} onChange={set("vigencia_fin")} />
           </div>
+          <p className="text-xs" style={{ color: "var(--subtle)" }}>
+            Se generará un código QR único para esta campaña al crearla.
+          </p>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={() => setModalOpen(false)}>Cancelar</Button>
             <Button type="submit" loading={saving}>Crear campaña</Button>

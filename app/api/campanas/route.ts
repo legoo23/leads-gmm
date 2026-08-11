@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServiceClient, createClient } from "@/lib/supabase/server"
 import { assertLicense } from "@/lib/license"
+import { generateVendorCode } from "@/lib/utils"
 
 export async function GET(_req: NextRequest) {
   assertLicense()
@@ -22,6 +23,9 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json()
   const svc = await createServiceClient()
+  const prefix = process.env.NEXT_PUBLIC_VENDOR_CODE_PREFIX ?? "GMM"
+  const codigo_unico = generateVendorCode(`${prefix}C`, 5)
+
   const { data, error } = await svc.from("campanas").insert({
     nombre: body.nombre,
     procedimiento_target: body.procedimiento_target || null,
@@ -29,6 +33,7 @@ export async function POST(req: NextRequest) {
     vigencia_inicio: body.vigencia_inicio || null,
     vigencia_fin: body.vigencia_fin || null,
     activa: true,
+    codigo_unico,
   }).select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
