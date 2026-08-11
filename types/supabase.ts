@@ -90,7 +90,7 @@ export interface Lead {
   exclusiones: string[] | null
 
   // Asignación
-  id_agente: number | null
+  id_agente: string | null   // UUID — referencia a auth.users.id
   id_medico: number | null
   id_hospital: number | null
 
