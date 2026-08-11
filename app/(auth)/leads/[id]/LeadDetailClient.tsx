@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import {
   ArrowLeft, Save, ChevronRight, User, Activity,
-  Stethoscope, Shield, CheckCircle, Tag, Link2, Copy, Check, Hospital, FileText,
+  Stethoscope, Shield, Tag, Link2, Copy, Check, Hospital, FileText,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input, Select, Textarea } from "@/components/ui/input"
@@ -63,16 +63,7 @@ interface Lead {
 }
 
 /* ─── Constantes de pipeline ─────────────────────────────────────── */
-const ETAPA_ORDER = [
-  "nuevo", "contactado", "necesidad_identificada", "seguro_identificado",
-  "en_validacion", "viable", "programado",
-]
 const CLOSURE = ["ganado", "no_viable", "perdido"]
-
-function etapaIndex(etapa: string) {
-  if (CLOSURE.includes(etapa)) return ETAPA_ORDER.length
-  return ETAPA_ORDER.indexOf(etapa)
-}
 
 /* ─── Componentes auxiliares ─────────────────────────────────────── */
 function BoolField({ label, value, onChange, disabled }: {
@@ -209,28 +200,20 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
   if (loading) return <PageLoader />
   if (!lead) return <div className="text-sm" style={{ color: "var(--muted)" }}>Lead no encontrado</div>
 
-  /* ─── Permisos y visibilidad ─────────────────────────────────── */
+  /* ─── Permisos ───────────────────────────────────────────────── */
   const canEdit = ["admin", "gerente", "ejecutivo"].includes(rol)
   const ro = !canEdit
 
-  const eIdx = etapaIndex(lead.etapa)
-  const showPadecimientos = eIdx >= etapaIndex("contactado")
-  const showSeguro        = eIdx >= etapaIndex("necesidad_identificada")
-  const showCobertura     = eIdx >= etapaIndex("seguro_identificado")
-  const showInternamiento = eIdx >= etapaIndex("viable") || lead.cobertura_confirmada === true
-
   const TABS = [
-    { key: "contacto",      label: "Contacto",         icon: User,        show: true },
-    { key: "padecimientos", label: "Padec. y Proced.",  icon: Stethoscope, show: showPadecimientos },
-    { key: "seguro",        label: "Póliza GMM",         icon: Shield,      show: showSeguro },
-    { key: "cobertura",     label: "Cobertura",          icon: CheckCircle, show: showCobertura },
-    { key: "internamiento", label: "Internamiento",       icon: Hospital,    show: showInternamiento },
-    { key: "canal",         label: "Canal",               icon: Tag,         show: true },
-    { key: "notas",         label: "Notas",               icon: Activity,    show: true },
-  ].filter((t) => t.show)
+    { key: "contacto",      label: "Contacto",     icon: User },
+    { key: "necesidad",     label: "Necesidad",     icon: Stethoscope },
+    { key: "seguro",        label: "Seguro GMM",    icon: Shield },
+    { key: "internamiento", label: "Internamiento", icon: Hospital },
+    { key: "canal",         label: "Canal",         icon: Tag },
+    { key: "notas",         label: "Notas",         icon: Activity },
+  ]
 
   const etapaInfo = ETAPAS_PIPELINE[lead.etapa as keyof typeof ETAPAS_PIPELINE]
-  // If current tab became hidden (e.g. after etapa reset), fallback to contacto
   const activeTab = TABS.find((t) => t.key === tab) ? tab : "contacto"
 
   /* ─── Render ─────────────────────────────────────────────────── */
@@ -318,11 +301,6 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
             })}
           </div>
         </div>
-        {!showPadecimientos && (
-          <p className="mt-2 text-xs" style={{ color: "var(--subtle)" }}>
-            Guarda cambios en Contacto para avanzar a <strong>Contactado</strong> y desbloquear el expediente completo.
-          </p>
-        )}
       </div>
 
       {/* ── Tabs + formulario ──────────────────────────────────── */}
@@ -380,13 +358,13 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
             </>
           )}
 
-          {/* ── PADECIMIENTOS Y PROCEDIMIENTO ────────────────── */}
-          {activeTab === "padecimientos" && (
+          {/* ── NECESIDAD (Historia Clínica + Procedimiento) ──── */}
+          {activeTab === "necesidad" && (
             <>
               <SectionTitle>Padecimientos e Historia Clínica</SectionTitle>
               <div className="grid grid-cols-2 gap-4">
                 <Input label="Diagnóstico principal" value={form.diagnostico_principal ?? ""} onChange={set("diagnostico_principal")} placeholder="ej: Colelitiasis, Hernia inguinal" readOnly={ro} />
-                <Input label="Diagnósticos secundarios" value={form.diagnosticos_secundarios ?? ""} onChange={set("diagnosticos_secundarios")} placeholder="Comorbilidades separadas por coma" readOnly={ro} />
+                <Input label="Diagnósticos secundarios / comorbilidades" value={form.diagnosticos_secundarios ?? ""} onChange={set("diagnosticos_secundarios")} placeholder="Separados por coma" readOnly={ro} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <BoolField label="¿Cirugías previas?" value={form.cirugias_previas ?? null} onChange={setBool("cirugias_previas")} disabled={ro} />
@@ -398,7 +376,7 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
               {form.tiene_medico_tratante && (
                 <Input label="Nombre del médico tratante" value={form.medico_tratante_nombre ?? ""} onChange={set("medico_tratante_nombre")} readOnly={ro} />
               )}
-              <Textarea label="Notas clínicas" value={form.notas_clinicas ?? ""} onChange={set("notas_clinicas")} rows={3} readOnly={ro} />
+              <Textarea label="Notas clínicas adicionales" value={form.notas_clinicas ?? ""} onChange={set("notas_clinicas")} rows={3} readOnly={ro} />
 
               <SectionTitle>Procedimiento Quirúrgico</SectionTitle>
               <div className="grid grid-cols-2 gap-4">
@@ -427,7 +405,7 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
             </>
           )}
 
-          {/* ── PÓLIZA GMM ───────────────────────────────────── */}
+          {/* ── SEGURO GMM (Póliza + Cobertura) ──────────────── */}
           {activeTab === "seguro" && (
             <>
               <SectionTitle>Datos de la Póliza</SectionTitle>
@@ -470,17 +448,21 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                 <Input label="Coaseguro (%)" type="number" value={form.coaseguro_pct ?? ""} onChange={set("coaseguro_pct")} readOnly={ro} />
                 <Input label="Tope de coaseguro" type="number" value={form.tope_coaseguro ?? ""} onChange={set("tope_coaseguro")} readOnly={ro} />
               </div>
-            </>
-          )}
 
-          {/* ── COBERTURA Y EXCLUSIONES ──────────────────────── */}
-          {activeTab === "cobertura" && (
-            <>
-              <SectionTitle>Estado de la Validación</SectionTitle>
+              <SectionTitle>Cobertura y Exclusiones</SectionTitle>
               <div className="grid grid-cols-2 gap-4">
                 <BoolField label="¿Cobertura confirmada?" value={form.cobertura_confirmada ?? null} onChange={setBool("cobertura_confirmada")} disabled={ro} />
                 <BoolField label="¿Requiere pre-autorización?" value={form.requiere_preautorizacion ?? null} onChange={setBool("requiere_preautorizacion")} disabled={ro} />
+                <BoolField label="¿Cubre cirugías?" value={form.cubre_cirugia ?? null} onChange={setBool("cubre_cirugia")} disabled={ro} />
+                <BoolField label="¿Cubre anestesiólogo?" value={form.cubre_anestesiologo ?? null} onChange={setBool("cubre_anestesiologo")} disabled={ro} />
+                <BoolField label="¿Cubre estudios preoperatorios?" value={form.cubre_estudios_preop ?? null} onChange={setBool("cubre_estudios_preop")} disabled={ro} />
+                <BoolField label="¿Cubre honorarios médicos?" value={form.cubre_honorarios ?? null} onChange={setBool("cubre_honorarios")} disabled={ro} />
+                <BoolField label="¿Cubre hospitalización?" value={form.cubre_hospitalizacion ?? null} onChange={setBool("cubre_hospitalizacion")} disabled={ro} />
+                <BoolField label="¿El procedimiento es preexistencia?" value={form.es_preexistencia ?? null} onChange={setBool("es_preexistencia")} disabled={ro} />
               </div>
+              <Textarea label="Condiciones / diagnósticos excluidos" value={form.condiciones_excluidas ?? ""} onChange={set("condiciones_excluidas")} rows={2} readOnly={ro} placeholder="Separar por coma" />
+
+              <SectionTitle>Autorización</SectionTitle>
               <div className="grid grid-cols-2 gap-4">
                 <Input label="Número de autorización" value={form.numero_autorizacion ?? ""} onChange={set("numero_autorizacion")} readOnly={ro} />
                 <Input label="Fecha de autorización" type="date" value={form.fecha_autorizacion ?? ""} onChange={set("fecha_autorizacion")} readOnly={ro} />
@@ -494,17 +476,6 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                   </a>
                 </div>
               )}
-
-              <SectionTitle>Coberturas Incluidas</SectionTitle>
-              <div className="grid grid-cols-2 gap-4">
-                <BoolField label="¿Cubre cirugías?" value={form.cubre_cirugia ?? null} onChange={setBool("cubre_cirugia")} disabled={ro} />
-                <BoolField label="¿Cubre anestesiólogo?" value={form.cubre_anestesiologo ?? null} onChange={setBool("cubre_anestesiologo")} disabled={ro} />
-                <BoolField label="¿Cubre estudios preoperatorios?" value={form.cubre_estudios_preop ?? null} onChange={setBool("cubre_estudios_preop")} disabled={ro} />
-                <BoolField label="¿Cubre honorarios médicos?" value={form.cubre_honorarios ?? null} onChange={setBool("cubre_honorarios")} disabled={ro} />
-                <BoolField label="¿Cubre hospitalización?" value={form.cubre_hospitalizacion ?? null} onChange={setBool("cubre_hospitalizacion")} disabled={ro} />
-                <BoolField label="¿El procedimiento es preexistencia?" value={form.es_preexistencia ?? null} onChange={setBool("es_preexistencia")} disabled={ro} />
-              </div>
-              <Textarea label="Condiciones / diagnósticos excluidos" value={form.condiciones_excluidas ?? ""} onChange={set("condiciones_excluidas")} rows={2} readOnly={ro} placeholder="Separar por coma" />
 
               <SectionTitle>Contacto en Aseguradora</SectionTitle>
               <div className="grid grid-cols-2 gap-4">
