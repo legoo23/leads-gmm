@@ -378,26 +378,9 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
             </>
           )}
 
-          {/* ── NECESIDAD (Historia Clínica + Procedimiento) ──── */}
+          {/* ── NECESIDAD (Procedimiento + Historia Clínica) ──── */}
           {activeTab === "necesidad" && (
             <>
-              <SectionTitle>Padecimientos e Historia Clínica</SectionTitle>
-              <div className="grid grid-cols-2 gap-4">
-                <Input label="Diagnóstico principal" value={form.diagnostico_principal ?? ""} onChange={set("diagnostico_principal")} placeholder="ej: Colelitiasis, Hernia inguinal" readOnly={ro} />
-                <Input label="Diagnósticos secundarios / comorbilidades" value={form.diagnosticos_secundarios ?? ""} onChange={set("diagnosticos_secundarios")} placeholder="Separados por coma" readOnly={ro} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <BoolField label="¿Cirugías previas?" value={form.cirugias_previas ?? null} onChange={setBool("cirugias_previas")} disabled={ro} />
-                <BoolField label="¿Tiene médico tratante?" value={form.tiene_medico_tratante ?? null} onChange={setBool("tiene_medico_tratante")} disabled={ro} />
-              </div>
-              {form.cirugias_previas && (
-                <Input label="Descripción de cirugías previas" value={form.cirugias_previas_desc ?? ""} onChange={set("cirugias_previas_desc")} placeholder="Año, tipo de cirugía, hospital" readOnly={ro} />
-              )}
-              {form.tiene_medico_tratante && (
-                <Input label="Nombre del médico tratante" value={form.medico_tratante_nombre ?? ""} onChange={set("medico_tratante_nombre")} readOnly={ro} />
-              )}
-              <Textarea label="Notas clínicas adicionales" value={form.notas_clinicas ?? ""} onChange={set("notas_clinicas")} rows={3} readOnly={ro} />
-
               <SectionTitle>Procedimiento Quirúrgico</SectionTitle>
               <div className="grid grid-cols-2 gap-4">
                 <Select label="Procedimiento" value={form.procedimiento ?? ""} onChange={set("procedimiento")} disabled={ro}>
@@ -422,6 +405,23 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
               </div>
               <Input label="Estancia estimada (días)" type="number" value={form.estancia_estimada_dias ?? ""} onChange={set("estancia_estimada_dias")} readOnly={ro} />
               <Textarea label="Notas del procedimiento" value={form.notas_procedimiento ?? ""} onChange={set("notas_procedimiento")} rows={3} readOnly={ro} />
+
+              <SectionTitle>Padecimientos e Historia Clínica</SectionTitle>
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Diagnóstico principal" value={form.diagnostico_principal ?? ""} onChange={set("diagnostico_principal")} placeholder="ej: Colelitiasis, Hernia inguinal" readOnly={ro} />
+                <Input label="Diagnósticos secundarios / comorbilidades" value={form.diagnosticos_secundarios ?? ""} onChange={set("diagnosticos_secundarios")} placeholder="Separados por coma" readOnly={ro} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <BoolField label="¿Cirugías previas?" value={form.cirugias_previas ?? null} onChange={setBool("cirugias_previas")} disabled={ro} />
+                <BoolField label="¿Tiene médico tratante?" value={form.tiene_medico_tratante ?? null} onChange={setBool("tiene_medico_tratante")} disabled={ro} />
+              </div>
+              {form.cirugias_previas && (
+                <Input label="Descripción de cirugías previas" value={form.cirugias_previas_desc ?? ""} onChange={set("cirugias_previas_desc")} placeholder="Año, tipo de cirugía, hospital" readOnly={ro} />
+              )}
+              {form.tiene_medico_tratante && (
+                <Input label="Nombre del médico tratante" value={form.medico_tratante_nombre ?? ""} onChange={set("medico_tratante_nombre")} readOnly={ro} />
+              )}
+              <Textarea label="Notas clínicas adicionales" value={form.notas_clinicas ?? ""} onChange={set("notas_clinicas")} rows={3} readOnly={ro} />
             </>
           )}
 
