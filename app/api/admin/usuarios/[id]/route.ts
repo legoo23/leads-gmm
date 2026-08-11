@@ -20,12 +20,25 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (body.rol && !ROLES_INTERNOS.includes(body.rol)) {
     return NextResponse.json({ error: "Rol inválido" }, { status: 400 })
   }
+  // No permitir que el admin se dé de baja a sí mismo
+  if (body.activo === false && id === user.id) {
+    return NextResponse.json({ error: "No puedes darte de baja a ti mismo" }, { status: 400 })
+  }
 
   const updates: Record<string, unknown> = {}
   if (body.rol) updates.rol = body.rol
   if (body.nombre) updates.nombre = body.nombre.trim()
+  if (body.activo !== undefined) updates.activo = body.activo
 
   const svc = await createServiceClient()
+
+  // Sincronizar ban en Supabase Auth cuando cambia activo
+  if (body.activo !== undefined) {
+    await svc.auth.admin.updateUserById(id, {
+      ban_duration: body.activo ? "none" : "876000h",
+    })
+  }
+
   const { data, error } = await svc.from("user_profiles").update(updates).eq("id", id).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 

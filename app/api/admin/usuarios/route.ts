@@ -16,7 +16,7 @@ export async function GET(_req: NextRequest) {
   }
 
   const svc = await createServiceClient()
-  const { data, error } = await svc.from("user_profiles").select("id, nombre, rol")
+  const { data, error } = await svc.from("user_profiles").select("id, nombre, rol, activo")
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   const { data: authData } = await svc.auth.admin.listUsers()

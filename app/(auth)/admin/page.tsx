@@ -1,13 +1,14 @@
 "use client"
 import { useState, useEffect } from "react"
-import { Settings, Users, DollarSign, Plus, Pencil, Trash2 } from "lucide-react"
+import { Settings, Users, DollarSign, Plus, Pencil, Trash2, UserX, UserCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Modal } from "@/components/ui/modal"
 import { Input, Select } from "@/components/ui/input"
 import { formatMXN } from "@/lib/utils"
+import { createClient } from "@/lib/supabase/client"
 
 interface Nivel { id: number; nombre: string; monto: number; descripcion: string | null; activo: boolean; orden: number }
-interface UserProfile { id: string; nombre: string; email: string; rol: string }
+interface UserProfile { id: string; nombre: string; email: string; rol: string; activo: boolean }
 
 const TABS = [
   { key: "usuarios", label: "Usuarios",             icon: Users },
@@ -37,6 +38,8 @@ export default function AdminPage() {
   const [error, setError]       = useState("")
   const [saving, setSaving]     = useState(false)
   const [deletingNivel, setDeletingNivel] = useState<number | null>(null)
+  const [togglingUsuario, setTogglingUsuario] = useState<string | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   /* ── Modales ───────────────────────────────── */
   const [modalNuevoUsuario, setModalNuevoUsuario] = useState(false)
@@ -50,7 +53,10 @@ export default function AdminPage() {
   const [nivelForm,   setNivelForm]       = useState({ nombre: "", monto: "", descripcion: "" })
   const [nivelEditForm, setNivelEditForm] = useState({ nombre: "", monto: "", descripcion: "", activo: true })
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    createClient().auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null))
+  }, [])
 
   async function load() {
     setLoading(true)
@@ -95,6 +101,25 @@ export default function AdminPage() {
       const json = await res.json(); setError(json.error ?? "Error")
     }
     setSaving(false)
+  }
+
+  async function toggleActivo(u: UserProfile) {
+    const accion = u.activo ? "dar de baja" : "reactivar"
+    if (!window.confirm(`¿Seguro que deseas ${accion} a ${u.nombre}?`)) return
+    setTogglingUsuario(u.id)
+    const res = await fetch(`/api/admin/usuarios/${u.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ activo: !u.activo }),
+    })
+    if (res.ok) {
+      setUsuarios((p) => p.map((x) => x.id === u.id ? { ...x, activo: !u.activo } : x))
+    } else {
+      const json = await res.json()
+      setError(json.error ?? "Error al cambiar estado")
+      setTimeout(() => setError(""), 5000)
+    }
+    setTogglingUsuario(null)
   }
 
   /* ── Niveles ───────────────────────────────── */
@@ -202,7 +227,7 @@ export default function AdminPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border)" }}>
-                  {["Nombre", "Correo electrónico", "Rol", ""].map((h, i) => (
+                  {["Nombre", "Correo electrónico", "Rol", "Estado", ""].map((h, i) => (
                     <th key={i} className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide"
                       style={{ color: "var(--subtle)" }}>{h}</th>
                   ))}
@@ -210,16 +235,21 @@ export default function AdminPage() {
               </thead>
               <tbody>
                 {loading && (
-                  <tr><td colSpan={4} className="text-center py-10 text-xs" style={{ color: "var(--subtle)" }}>Cargando...</td></tr>
+                  <tr><td colSpan={5} className="text-center py-10 text-xs" style={{ color: "var(--subtle)" }}>Cargando...</td></tr>
                 )}
                 {!loading && usuarios.length === 0 && (
-                  <tr><td colSpan={4} className="text-center py-12 text-xs" style={{ color: "var(--subtle)" }}>Sin usuarios registrados</td></tr>
+                  <tr><td colSpan={5} className="text-center py-12 text-xs" style={{ color: "var(--subtle)" }}>Sin usuarios registrados</td></tr>
                 )}
                 {usuarios.map((u) => {
                   const s = ROL_STYLE[u.rol] ?? ROL_STYLE.visualizador
+                  const esSelf = u.id === currentUserId
                   return (
-                    <tr key={u.id} className="border-t hover:bg-[var(--surface-2)] transition-colors"
-                      style={{ borderColor: "var(--border)" }}>
+                    <tr key={u.id} className="border-t transition-colors"
+                      style={{
+                        borderColor: "var(--border)",
+                        background: u.activo ? undefined : "rgba(220,38,38,.03)",
+                        opacity: u.activo ? 1 : 0.7,
+                      }}>
                       <td className="px-4 py-3 text-xs font-medium" style={{ color: "var(--text)" }}>{u.nombre}</td>
                       <td className="px-4 py-3 text-xs font-mono" style={{ color: "var(--muted)" }}>{u.email}</td>
                       <td className="px-4 py-3">
@@ -228,13 +258,35 @@ export default function AdminPage() {
                           {ROL_LABEL[u.rol] ?? u.rol}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={() => { setRolEdit(u.rol); setError(""); setModalEditRol(u) }}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs transition-colors hover:bg-[var(--surface-2)]"
-                          style={{ color: "var(--muted)" }}>
-                          <Pencil size={11} />Editar rol
-                        </button>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                          style={{
+                            background: u.activo ? "#ECFDF5" : "#FEF2F2",
+                            color:      u.activo ? "#059669" : "#DC2626",
+                          }}>
+                          {u.activo ? "Activo" : "De baja"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => { setRolEdit(u.rol); setError(""); setModalEditRol(u) }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs transition-colors hover:bg-[var(--surface-2)]"
+                            style={{ color: "var(--muted)" }}>
+                            <Pencil size={11} />Editar rol
+                          </button>
+                          {!esSelf && (
+                            <button
+                              onClick={() => toggleActivo(u)}
+                              disabled={togglingUsuario === u.id}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs transition-colors hover:bg-[var(--surface-2)] disabled:opacity-40"
+                              style={{ color: u.activo ? "#DC2626" : "#059669" }}>
+                              {u.activo
+                                ? <><UserX size={11} />Dar de baja</>
+                                : <><UserCheck size={11} />Reactivar</>}
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )
