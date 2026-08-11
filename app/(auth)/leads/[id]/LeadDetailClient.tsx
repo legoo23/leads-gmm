@@ -353,10 +353,9 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                 <Input label="Apellido paterno *" value={form.apellido_paterno ?? ""} onChange={set("apellido_paterno")} readOnly={ro} />
                 <Input label="Apellido materno" value={form.apellido_materno ?? ""} onChange={set("apellido_materno")} readOnly={ro} />
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <Input label="Teléfono *" value={form.telefono ?? ""} onChange={set("telefono")} maxLength={20} readOnly={ro} />
                 <Input label="Tel. alternativo" value={form.telefono_alternativo ?? ""} onChange={set("telefono_alternativo")} maxLength={20} readOnly={ro} />
-                <Input label="Tel. alternativo 2" value={form.telefono_alternativo_2 ?? ""} onChange={set("telefono_alternativo_2")} maxLength={20} readOnly={ro} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <Input label="Email *" type="email" value={form.email ?? ""} onChange={set("email")} readOnly={ro} />
