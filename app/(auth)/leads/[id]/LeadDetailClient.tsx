@@ -17,7 +17,8 @@ import { PageLoader } from "@/components/ui/spinner"
 
 interface Lead {
   id: number; folio: string; nombre: string; apellido_paterno: string | null
-  apellido_materno: string | null; telefono: string | null; email: string | null
+  apellido_materno: string | null; telefono: string | null; telefono_alternativo: string | null
+  telefono_alternativo_2: string | null; email: string | null; email_alternativo: string | null
   curp: string | null; fecha_nacimiento: string | null; estado_ciudad: string | null
   prioridad: string; etapa: string; estado: string; procedimiento: string | null
   categoria_quirurgica: string | null; codigo_procedimiento: string | null
@@ -240,9 +241,16 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                 <Input label="Apellido paterno" value={form.apellido_paterno ?? ""} onChange={set("apellido_paterno")} />
                 <Input label="Apellido materno" value={form.apellido_materno ?? ""} onChange={set("apellido_materno")} />
               </div>
+              {/* Teléfonos */}
+              <div className="grid grid-cols-3 gap-4">
+                <Input label="Teléfono" value={form.telefono ?? ""} onChange={set("telefono")} maxLength={10} />
+                <Input label="Tel. alternativo" value={form.telefono_alternativo ?? ""} onChange={set("telefono_alternativo")} maxLength={10} />
+                <Input label="Tel. alternativo 2" value={form.telefono_alternativo_2 ?? ""} onChange={set("telefono_alternativo_2")} maxLength={10} />
+              </div>
+              {/* Emails */}
               <div className="grid grid-cols-2 gap-4">
-                <Input label="Teléfono" value={form.telefono ?? ""} onChange={set("telefono")} />
                 <Input label="Email" type="email" value={form.email ?? ""} onChange={set("email")} />
+                <Input label="Email alternativo" type="email" value={form.email_alternativo ?? ""} onChange={set("email_alternativo")} />
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <Input label="Fecha de nacimiento" type="date" value={form.fecha_nacimiento ?? ""} onChange={set("fecha_nacimiento")} />

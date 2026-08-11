@@ -19,9 +19,13 @@ export default function NuevoLeadPage() {
     apellido_paterno: "",
     apellido_materno: "",
     telefono: "",
+    telefono_alternativo: "",
+    telefono_alternativo_2: "",
     email: "",
+    email_alternativo: "",
     fecha_nacimiento: "",
     estado_ciudad: "",
+    curp: "",
     prioridad: "media",
     procedimiento: "",
     urgencia: "electiva",
@@ -84,22 +88,38 @@ export default function NuevoLeadPage() {
           <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--subtle)" }}>
             Datos de contacto
           </h2>
+
+          {/* Nombre */}
           <div className="grid grid-cols-3 gap-4">
             <Input label="Nombre *" value={form.nombre} onChange={set("nombre")} placeholder="Nombre" required />
             <Input label="Apellido paterno" value={form.apellido_paterno} onChange={set("apellido_paterno")} />
             <Input label="Apellido materno" value={form.apellido_materno} onChange={set("apellido_materno")} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Teléfono (10 dígitos)" value={form.telefono} onChange={set("telefono")} placeholder="5512345678" maxLength={10} />
-            <Input label="Email" type="email" value={form.email} onChange={set("email")} />
+
+          {/* Teléfonos */}
+          <div className="grid grid-cols-3 gap-4">
+            <Input label="Teléfono *" value={form.telefono} onChange={set("telefono")} placeholder="5512345678" maxLength={10} />
+            <Input label="Tel. alternativo" value={form.telefono_alternativo} onChange={set("telefono_alternativo")} placeholder="5512345678" maxLength={10} />
+            <Input label="Tel. alternativo 2" value={form.telefono_alternativo_2} onChange={set("telefono_alternativo_2")} placeholder="5512345678" maxLength={10} />
           </div>
+
+          {/* Emails */}
           <div className="grid grid-cols-2 gap-4">
+            <Input label="Email" type="email" value={form.email} onChange={set("email")} />
+            <Input label="Email alternativo" type="email" value={form.email_alternativo} onChange={set("email_alternativo")} />
+          </div>
+
+          {/* Nacimiento / Estado / CURP */}
+          <div className="grid grid-cols-3 gap-4">
             <Input label="Fecha de nacimiento" type="date" value={form.fecha_nacimiento} onChange={set("fecha_nacimiento")} />
             <Select label="Estado / Ciudad" value={form.estado_ciudad} onChange={set("estado_ciudad")}>
               <option value="">Seleccionar estado</option>
               {GEO_ESTADOS.map((s) => <option key={s} value={s}>{s}</option>)}
             </Select>
+            <Input label="CURP (opcional)" value={form.curp} onChange={set("curp")} maxLength={18}
+              placeholder="ABCD010101HDFXXX01" style={{ textTransform: "uppercase" }} />
           </div>
+
           <Select label="Prioridad" value={form.prioridad} onChange={set("prioridad")}>
             <option value="baja">Baja</option>
             <option value="media">Media</option>
