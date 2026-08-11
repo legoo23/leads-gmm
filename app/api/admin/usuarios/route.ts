@@ -37,25 +37,23 @@ export async function POST(req: NextRequest) {
   if (profile?.rol !== "admin") return NextResponse.json({ error: "Solo admin" }, { status: 403 })
 
   const body = await req.json()
-  const { nombre, email, password, rol } = body
+  const { nombre, email, rol } = body
 
-  if (!nombre?.trim() || !email?.trim() || !password || !rol) {
-    return NextResponse.json({ error: "Todos los campos son requeridos" }, { status: 400 })
+  if (!nombre?.trim() || !email?.trim() || !rol) {
+    return NextResponse.json({ error: "Nombre, correo y rol son requeridos" }, { status: 400 })
   }
   if (!ROLES_INTERNOS.includes(rol)) {
     return NextResponse.json({ error: "Rol inválido" }, { status: 400 })
   }
-  if (password.length < 8) {
-    return NextResponse.json({ error: "La contraseña debe tener al menos 8 caracteres" }, { status: 400 })
-  }
 
   const svc = await createServiceClient()
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ""
+  const redirectTo = `${appUrl}/auth/callback?next=/auth/update-password`
 
-  const { data: authData, error: authError } = await svc.auth.admin.createUser({
-    email: email.trim().toLowerCase(),
-    password,
-    email_confirm: true,
-  })
+  const { data: authData, error: authError } = await svc.auth.admin.inviteUserByEmail(
+    email.trim().toLowerCase(),
+    { redirectTo }
+  )
   if (authError) return NextResponse.json({ error: authError.message }, { status: 500 })
 
   const { data, error } = await svc.from("user_profiles").insert({

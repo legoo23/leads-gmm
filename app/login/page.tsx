@@ -1,7 +1,8 @@
 "use client"
 import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -9,6 +10,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const router = useRouter()
+  const params = useSearchParams()
+  const callbackError = params.get("error")
   const supabase = createClient()
 
   async function handleLogin(e: React.FormEvent) {
@@ -92,13 +95,13 @@ export default function LoginPage() {
               />
             </div>
 
-            {error && (
+            {(error || callbackError) && (
               <div className="rounded-lg px-3 py-2.5 text-sm" style={{
                 background: "var(--negative-bg)",
                 border: "1px solid rgba(220,38,38,.2)",
                 color: "var(--negative)"
               }}>
-                {error}
+                {error || callbackError}
               </div>
             )}
 
@@ -110,6 +113,14 @@ export default function LoginPage() {
             >
               {loading ? "Ingresando..." : "Entrar"}
             </button>
+
+            <div className="text-center">
+              <Link href="/auth/forgot-password"
+                className="text-xs transition-colors"
+                style={{ color: "var(--muted)" }}>
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
           </form>
         </div>
 

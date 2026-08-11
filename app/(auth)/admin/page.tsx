@@ -45,7 +45,7 @@ export default function AdminPage() {
   const [modalEditNivel,    setModalEditNivel]    = useState<Nivel | null>(null)
 
   /* ── Formularios ───────────────────────────── */
-  const [usuarioForm, setUsuarioForm]     = useState({ nombre: "", email: "", password: "", rol: "ejecutivo" })
+  const [usuarioForm, setUsuarioForm]     = useState({ nombre: "", email: "", rol: "ejecutivo" })
   const [rolEdit,     setRolEdit]         = useState("")
   const [nivelForm,   setNivelForm]       = useState({ nombre: "", monto: "", descripcion: "" })
   const [nivelEditForm, setNivelEditForm] = useState({ nombre: "", monto: "", descripcion: "", activo: true })
@@ -75,7 +75,7 @@ export default function AdminPage() {
     if (res.ok) {
       setUsuarios((p) => [...p, json.data])
       setModalNuevoUsuario(false)
-      setUsuarioForm({ nombre: "", email: "", password: "", rol: "ejecutivo" })
+      setUsuarioForm({ nombre: "", email: "", rol: "ejecutivo" })
     } else { setError(json.error ?? "Error al crear usuario") }
     setSaving(false)
   }
@@ -373,17 +373,16 @@ export default function AdminPage() {
           )}
           <Input label="Nombre completo *" value={usuarioForm.nombre} onChange={setU("nombre")} required />
           <Input label="Correo electrónico *" type="email" value={usuarioForm.email} onChange={setU("email")} required />
-          <Input label="Contraseña temporal *" type="password" value={usuarioForm.password}
-            onChange={setU("password")} placeholder="Mínimo 8 caracteres" required />
           <Select label="Rol *" value={usuarioForm.rol} onChange={setU("rol")}>
             <option value="ejecutivo">Ejecutivo</option>
             <option value="gerente">Gerente</option>
             <option value="visualizador">Visualizador</option>
             <option value="admin">Administrador</option>
           </Select>
-          <p className="text-xs" style={{ color: "var(--subtle)" }}>
-            El usuario puede cambiar su contraseña desde su perfil en el primer inicio de sesión.
-          </p>
+          <div className="p-3 rounded-lg text-xs leading-relaxed" style={{ background: "#EFF6FF", color: "#1D4ED8" }}>
+            El usuario recibirá un correo con un enlace para establecer su propia contraseña.
+            El enlace es válido por 24 horas.
+          </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={() => setModalNuevoUsuario(false)}>Cancelar</Button>
             <Button type="submit" loading={saving}>Crear usuario</Button>
