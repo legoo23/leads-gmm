@@ -92,7 +92,7 @@ export default function NuevoLeadPage() {
     id_aseguradora: "",
     aseguradora_otro: "",
     numero_poliza: "",
-    fuente: "formulario",
+    fuente: "llamada",
     fuente_especifica: "",
     notas: "",
   })
@@ -294,15 +294,18 @@ export default function NuevoLeadPage() {
           </p>
           <div className="grid grid-cols-2 gap-4">
             <Select label="Canal principal" value={form.fuente} onChange={set("fuente")}>
-              <option value="formulario">Formulario web</option>
               <option value="llamada">Llamada entrante</option>
-              <option value="qr">QR / Link de vendedor</option>
               <option value="referido">Referido directo</option>
               <option value="redes_sociales">Redes sociales</option>
-              <option value="whatsapp_bot">WhatsApp Bot (automático)</option>
             </Select>
 
             {/* Fuente específica — condicional según canal */}
+            {form.fuente === "llamada" && (
+              <Input label="Origen de la llamada (Opcional)" value={form.fuente_especifica} onChange={set("fuente_especifica")} placeholder="Ej: base de datos, contacto previo..." />
+            )}
+            {form.fuente === "referido" && (
+              <Input label="¿Quién o qué lo refirió?" value={form.fuente_especifica} onChange={set("fuente_especifica")} placeholder="Nombre, médico, institución..." />
+            )}
             {form.fuente === "redes_sociales" && (
               <Select label="Red social específica" value={form.fuente_especifica} onChange={set("fuente_especifica")}>
                 <option value="">Seleccionar</option>
@@ -315,15 +318,6 @@ export default function NuevoLeadPage() {
                 <option value="Google Ads">Google Ads</option>
                 <option value="Otro">Otro</option>
               </Select>
-            )}
-            {form.fuente === "referido" && (
-              <Input label="¿Quién o qué lo refirió?" value={form.fuente_especifica} onChange={set("fuente_especifica")} placeholder="Nombre, médico, institución..." />
-            )}
-            {form.fuente === "llamada" && (
-              <Input label="Origen de la llamada" value={form.fuente_especifica} onChange={set("fuente_especifica")} placeholder="Ej: base de datos, contacto previo..." />
-            )}
-            {form.fuente === "formulario" && (
-              <Input label="Página / campaña de origen (Opcional)" value={form.fuente_especifica} onChange={set("fuente_especifica")} placeholder="Ej: landing verano, Google Ads..." />
             )}
           </div>
         </section>
