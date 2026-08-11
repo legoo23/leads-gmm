@@ -7,6 +7,8 @@ import { assertLicense } from "@/lib/license"
 
 type Params = { params: Promise<{ id: string }> }
 
+const CLOSURE_ETAPAS = ["ganado", "no_viable", "perdido"]
+
 export async function GET(_req: NextRequest, { params }: Params) {
   assertLicense()
   const { id } = await params
@@ -22,7 +24,6 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 404 })
 
-  // Decrypt sensitive fields for display
   const decrypted = {
     ...data,
     telefono: decryptField(data.telefono_enc),
@@ -47,8 +48,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const updates: Record<string, unknown> = { ...body }
 
+  // Encrypt PII fields
   if (body.telefono !== undefined) {
-    const t = normalizePhone(body.telefono)
+    const rawTel = String(body.telefono ?? "").trim()
+    const t = normalizePhone(rawTel) || rawTel
     updates.telefono_enc = encryptField(t)
     updates.telefono_hash = hashField(t)
     delete updates.telefono
@@ -73,6 +76,29 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     updates.nombre_enc = encryptField(body.nombre)
   }
 
+  // Auto-advance etapa (skip if caller is explicitly setting it)
+  if (!body.etapa) {
+    const { data: current } = await svc.from("leads")
+      .select("etapa, diagnostico_principal, id_aseguradora, numero_poliza_enc")
+      .eq("id", id)
+      .single()
+
+    if (current && !CLOSURE_ETAPAS.includes(current.etapa)) {
+      const mergedDiagnostico = body.diagnostico_principal || current.diagnostico_principal
+      const mergedAseguradora = body.id_aseguradora || current.id_aseguradora
+      const willHavePoliza = body.numero_poliza ? true : !!current.numero_poliza_enc
+
+      if (current.etapa === "nuevo") {
+        updates.etapa = "contactado"
+        updates.fecha_contacto = new Date().toISOString()
+      } else if (current.etapa === "contactado" && mergedDiagnostico) {
+        updates.etapa = "necesidad_identificada"
+      } else if (current.etapa === "necesidad_identificada" && mergedAseguradora && willHavePoliza) {
+        updates.etapa = "seguro_identificado"
+      }
+    }
+  }
+
   const { data, error } = await svc.from("leads").update(updates).eq("id", id).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
@@ -88,7 +114,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
 
   const { data: profile } = await supabase.from("user_profiles").select("rol").eq("id", user.id).single()
-  if (!["admin", "supervisor"].includes(profile?.rol ?? "")) {
+  if (!["admin", "gerente"].includes(profile?.rol ?? "")) {
     return NextResponse.json({ error: "Sin permisos" }, { status: 403 })
   }
 
