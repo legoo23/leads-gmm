@@ -7,7 +7,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input, Select, Textarea } from "@/components/ui/input"
-import { Badge, PrioridadBadge } from "@/components/ui/badge"
+import { Badge } from "@/components/ui/badge"
 import { ETAPAS_PIPELINE, ETAPAS_ACTIVAS, ETAPAS_CIERRE } from "@/constants/lead-etapas"
 import { ASEGURADORAS } from "@/constants/aseguradoras"
 import { PROCEDIMIENTOS } from "@/constants/procedimientos"
@@ -374,7 +374,6 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-mono text-xs font-bold" style={{ color: "var(--accent)" }}>{lead.folio}</span>
             {etapaInfo && <Badge label={etapaInfo.label} color={etapaInfo.color} bg={etapaInfo.bg} size="sm" />}
-            <PrioridadBadge prioridad={lead.prioridad} />
             {!canEdit && (
               <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "var(--surface-2)", color: "var(--muted)" }}>
                 Solo lectura
@@ -490,12 +489,6 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                   {GEO_ESTADOS.map((s) => <option key={s} value={s}>{s}</option>)}
                 </Select>
               </div>
-              <Select label="Prioridad" value={form.prioridad ?? "media"} onChange={set("prioridad")} disabled={ro}>
-                <option value="baja">Baja</option>
-                <option value="media">Media</option>
-                <option value="alta">Alta</option>
-                <option value="urgente">Urgente</option>
-              </Select>
             </>
           )}
 

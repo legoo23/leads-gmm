@@ -19,7 +19,6 @@ export async function GET(req: NextRequest) {
   const limit = sanitizeLimit(sp.get("limit"), 25)
   const offset = parseInt(sp.get("offset") ?? "0")
   const etapa = sp.get("etapa")
-  const prioridad = sp.get("prioridad")
   const search = sp.get("q")
 
   const svc = await createServiceClient()
@@ -37,13 +36,12 @@ export async function GET(req: NextRequest) {
     .range(offset, offset + limit - 1)
 
   if (etapa) query = query.eq("etapa", etapa)
-  if (prioridad) query = query.eq("prioridad", prioridad)
   if (rol === "agente") query = query.eq("id_agente", user.id)
 
   const { data, error, count } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  await logAudit({ accion: "list_leads", tabla: "leads", id_usuario: user.id, metadata: { etapa, prioridad, count } })
+  await logAudit({ accion: "list_leads", tabla: "leads", id_usuario: user.id, metadata: { etapa, count } })
   return NextResponse.json({ data, total: count, limit, offset })
 }
 

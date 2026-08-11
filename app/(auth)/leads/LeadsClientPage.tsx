@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { Plus, Search, Filter, RefreshCw, AlertCircle, Inbox, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge, PrioridadBadge } from "@/components/ui/badge"
+import { Badge } from "@/components/ui/badge"
 import { ETAPAS_PIPELINE } from "@/constants/lead-etapas"
 import { formatDate } from "@/lib/utils"
 
@@ -13,7 +13,6 @@ interface Lead {
   nombre: string
   apellido_paterno: string | null
   etapa: string
-  prioridad: string
   procedimiento: string | null
   fuente: string | null
   fecha_captura: string
@@ -41,7 +40,6 @@ export default function LeadsClientPage({ rol, userId }: { rol: string; userId: 
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [etapa, setEtapa] = useState("")
-  const [prioridad, setPrioridad] = useState("")
   const [q, setQ] = useState("")
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list")
 
@@ -49,7 +47,6 @@ export default function LeadsClientPage({ rol, userId }: { rol: string; userId: 
     setLoading(true)
     const params = new URLSearchParams()
     if (etapa) params.set("etapa", etapa)
-    if (prioridad) params.set("prioridad", prioridad)
     if (q) params.set("q", q)
     params.set("limit", "50")
 
@@ -60,7 +57,7 @@ export default function LeadsClientPage({ rol, userId }: { rol: string; userId: 
       setTotal(json.total ?? 0)
     }
     setLoading(false)
-  }, [etapa, prioridad, q])
+  }, [etapa, q])
 
   useEffect(() => { fetchLeads() }, [fetchLeads])
 
@@ -135,18 +132,6 @@ export default function LeadsClientPage({ rol, userId }: { rol: string; userId: 
           ))}
         </select>
 
-        <select
-          value={prioridad}
-          onChange={(e) => setPrioridad(e.target.value)}
-          className="h-8 px-3 rounded-lg text-xs border outline-none"
-          style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }}
-        >
-          <option value="">Todas las prioridades</option>
-          <option value="urgente">Urgente</option>
-          <option value="alta">Alta</option>
-          <option value="media">Media</option>
-          <option value="baja">Baja</option>
-        </select>
       </div>
 
       {/* Tabla */}
@@ -155,7 +140,7 @@ export default function LeadsClientPage({ rol, userId }: { rol: string; userId: 
           <table className="w-full text-sm">
             <thead>
               <tr style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border)" }}>
-                {["Folio", "Paciente", "Procedimiento", "Etapa", "Prioridad", "Fuente", "Fecha", ""].map((h) => (
+                {["Folio", "Paciente", "Procedimiento", "Etapa", "Fuente", "Fecha", ""].map((h) => (
                   <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide"
                     style={{ color: "var(--subtle)" }}>
                     {h}
@@ -217,9 +202,6 @@ export default function LeadsClientPage({ rol, userId }: { rol: string; userId: 
                       {etapaInfo && (
                         <Badge label={etapaInfo.label} color={etapaInfo.color} bg={etapaInfo.bg} size="sm" />
                       )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <PrioridadBadge prioridad={lead.prioridad} />
                     </td>
                     <td className="px-4 py-3">
                       <span className="text-xs" style={{ color: "var(--subtle)" }}>

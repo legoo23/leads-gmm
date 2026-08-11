@@ -87,7 +87,6 @@ export default function NuevoLeadPage() {
     fecha_nacimiento: "",
     estado_ciudad: "",
     curp: "",
-    prioridad: "media",
     procedimiento: "",
     urgencia: "electiva",
     id_aseguradora: "",
@@ -237,12 +236,6 @@ export default function NuevoLeadPage() {
               style={{ textTransform: "uppercase" }} />
           </div>
 
-          <Select label="Prioridad" value={form.prioridad} onChange={set("prioridad")}>
-            <option value="baja">Baja</option>
-            <option value="media">Media</option>
-            <option value="alta">Alta</option>
-            <option value="urgente">Urgente</option>
-          </Select>
         </section>
 
         {/* ── PROCEDIMIENTO ──────────────────────────────────────── */}

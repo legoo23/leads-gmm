@@ -2,14 +2,14 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Phone, Clock, AlertCircle, Inbox, RefreshCw } from "lucide-react"
-import { Badge, PrioridadBadge } from "@/components/ui/badge"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ETAPAS_PIPELINE } from "@/constants/lead-etapas"
 import { formatDate } from "@/lib/utils"
 
 interface Lead {
   id: number; folio: string; nombre: string; apellido_paterno: string | null
-  etapa: string; prioridad: string; procedimiento: string | null
+  etapa: string; procedimiento: string | null
   fuente: string | null; fecha_captura: string; en_cola_revision: boolean
 }
 
@@ -89,7 +89,6 @@ export default function CallCenterPage() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <PrioridadBadge prioridad={lead.prioridad} />
                 <Button size="sm" onClick={() => aprobarLead(lead.id)}>
                   <Phone size={11} />
                   Confirmar lead
@@ -115,7 +114,7 @@ export default function CallCenterPage() {
           <table className="w-full text-sm">
             <thead>
               <tr style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border)" }}>
-                {["Folio","Paciente","Procedimiento","Prioridad","Fecha",""].map((h) => (
+                {["Folio","Paciente","Procedimiento","Fecha",""].map((h) => (
                   <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide"
                     style={{ color: "var(--subtle)" }}>{h}</th>
                 ))}
@@ -139,7 +138,6 @@ export default function CallCenterPage() {
                   <td className="px-4 py-3">
                     <span className="text-xs" style={{ color: "var(--muted)" }}>{lead.procedimiento ?? "—"}</span>
                   </td>
-                  <td className="px-4 py-3"><PrioridadBadge prioridad={lead.prioridad} /></td>
                   <td className="px-4 py-3">
                     <span className="text-xs tabular-nums" style={{ color: "var(--subtle)" }}>{formatDate(lead.fecha_captura)}</span>
                   </td>
