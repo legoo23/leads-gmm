@@ -1,9 +1,9 @@
 "use client"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
 import {
   ArrowLeft, Save, ChevronRight, User, Activity,
-  Stethoscope, Shield, Tag, Link2, Copy, Check, Hospital, FileText, UserCheck,
+  Stethoscope, Shield, Tag, Link2, Copy, Check, Hospital, FileText, UserCheck, Search,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input, Select, Textarea } from "@/components/ui/input"
@@ -11,6 +11,7 @@ import { Badge, PrioridadBadge } from "@/components/ui/badge"
 import { ETAPAS_PIPELINE, ETAPAS_ACTIVAS, ETAPAS_CIERRE } from "@/constants/lead-etapas"
 import { ASEGURADORAS } from "@/constants/aseguradoras"
 import { PROCEDIMIENTOS } from "@/constants/procedimientos"
+import { ESPECIALIDADES_MEDICAS } from "@/constants/especialidades-medicas"
 import { GEO_ESTADOS } from "@/constants/geo-mx"
 import { formatDate } from "@/lib/utils"
 import { PageLoader } from "@/components/ui/spinner"
@@ -55,13 +56,13 @@ interface Lead {
   contacto_aseguradora_nombre: string | null; contacto_aseguradora_telefono: string | null
   notas_validacion: string | null
   // Médico asignado
+  id_medico: number | null
   medico_asignado_nombre: string | null
   medico_telefono: string | null
   medico_email: string | null
   medico_especialidad: string | null
   medico_en_red: boolean | null
   medico_hospitales: string | null
-  hospital_sugerido: string | null
   // Internamiento
   tipo_ingreso: string | null; es_accidente: boolean | null
   fecha_inicio_sintomas: string | null; mecanismo_ingreso: string | null
@@ -134,6 +135,69 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   )
 }
 
+/* ─── Especialidad con dropdown + "Otro" libre ───────────────────── */
+function EspecialidadSelect({ value, onChange, disabled }: {
+  value: string; onChange: (v: string) => void; disabled?: boolean
+}) {
+  const known = ESPECIALIDADES_MEDICAS as readonly string[]
+  const isCustom = value !== "" && !known.includes(value)
+  const selectValue = isCustom ? "__otro__" : value
+
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-medium" style={{ color: "var(--muted)" }}>Especialidad</label>
+      <select
+        disabled={disabled}
+        value={selectValue}
+        onChange={(e) => {
+          if (e.target.value === "__otro__") onChange("")
+          else onChange(e.target.value)
+        }}
+        className="w-full h-9 px-3 rounded-lg border text-sm outline-none appearance-none"
+        style={{
+          backgroundColor: "var(--surface)",
+          borderColor: "var(--border)",
+          color: "var(--text)",
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+          backgroundRepeat: "no-repeat",
+          backgroundPosition: "right 10px center",
+          backgroundSize: "14px",
+          paddingRight: "32px",
+        }}
+      >
+        <option value="">— Especialidad —</option>
+        {ESPECIALIDADES_MEDICAS.map((e) => (
+          <option key={e} value={e}>{e}</option>
+        ))}
+        <option value="__otro__">Otro</option>
+      </select>
+      {(selectValue === "__otro__" || isCustom) && (
+        <input
+          type="text"
+          disabled={disabled}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Especificar especialidad"
+          className="w-full h-9 px-3 rounded-lg border text-sm outline-none mt-1"
+          style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }}
+        />
+      )}
+    </div>
+  )
+}
+
+/* ─── Tipo resultado búsqueda médicos ────────────────────────────── */
+interface MedicoResult {
+  id: number
+  nombre: string
+  especialidad: string | null
+  telefono: string | null
+  email: string | null
+  cedula: string | null
+  en_red: boolean | null
+  hospitales: { nombre: string; ciudad: string | null } | null
+}
+
 /* ─── Componente principal ───────────────────────────────────────── */
 export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol: string }) {
   const [lead, setLead] = useState<Lead | null>(null)
@@ -149,6 +213,13 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
   const [generatingLink, setGeneratingLink] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   const [docsSeleccionados, setDocsSeleccionados] = useState<string[]>(["poliza", "ine"])
+
+  // Búsqueda de médicos
+  const [medicoQuery, setMedicoQuery] = useState("")
+  const [medicoResults, setMedicoResults] = useState<MedicoResult[]>([])
+  const [medicoSearching, setMedicoSearching] = useState(false)
+  const [showManualEntry, setShowManualEntry] = useState(false)
+  const medicoSearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const loadLead = useCallback(async () => {
     const { data } = await fetch(`/api/leads/${leadId}`).then((r) => r.json())
@@ -192,11 +263,53 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
   const setBool = (k: string) => (v: boolean | null) =>
     setForm((f) => ({ ...f, [k]: v }))
 
+  const searchMedicos = useCallback((q: string, soloRed = false) => {
+    if (medicoSearchTimeout.current) clearTimeout(medicoSearchTimeout.current)
+    if (q.length < 2) { setMedicoResults([]); setMedicoSearching(false); return }
+    setMedicoSearching(true)
+    medicoSearchTimeout.current = setTimeout(async () => {
+      const params = new URLSearchParams({ q, limit: "6" })
+      if (soloRed) params.set("red", "true")
+      const res = await fetch(`/api/medicos?${params}`)
+      const { data } = await res.json()
+      setMedicoResults(data ?? [])
+      setMedicoSearching(false)
+    }, 280)
+  }, [])
+
+  const selectMedicoCatalog = useCallback((m: MedicoResult) => {
+    const hospitalNombre = m.hospitales
+      ? `${m.hospitales.nombre}${m.hospitales.ciudad ? `, ${m.hospitales.ciudad}` : ""}`
+      : ""
+    setForm((f) => ({
+      ...f,
+      id_medico: m.id,
+      medico_asignado_nombre: m.nombre,
+      medico_especialidad: m.especialidad ?? "",
+      medico_telefono: m.telefono ?? "",
+      medico_email: m.email ?? "",
+      medico_en_red: m.en_red ?? false,
+      medico_hospitales: hospitalNombre,
+    }))
+    setMedicoQuery("")
+    setMedicoResults([])
+    setShowManualEntry(false)
+  }, [])
+
   async function save() {
     setSaving(true)
     setSaveMsg("")
-    // Strip joined relations and primary key before sending
-    const { vendedores: _v, aseguradoras: _a, id: _id, ...payload } = form as Record<string, unknown>
+    // Strip all joined relations and encrypted fields (re-generated server-side from plaintext)
+    const {
+      vendedores: _v, aseguradoras: _a, campanas: _c, medicos: _m, hospitales: _h,
+      id: _id,
+      telefono_enc: _te, telefono_hash: _th,
+      email_enc: _ee, email_hash: _eh,
+      curp_enc: _ce, curp_hash: _ch,
+      nombre_enc: _ne,
+      numero_poliza_enc: _pe,
+      ...payload
+    } = form as Record<string, unknown>
     const res = await fetch(`/api/leads/${leadId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -413,15 +526,9 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                 <Input label="Diagnóstico principal" value={form.diagnostico_principal ?? ""} onChange={set("diagnostico_principal")} placeholder="ej: Colelitiasis, Hernia inguinal" readOnly={ro} />
                 <Input label="Diagnósticos secundarios / comorbilidades" value={form.diagnosticos_secundarios ?? ""} onChange={set("diagnosticos_secundarios")} placeholder="Separados por coma" readOnly={ro} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <BoolField label="¿Cirugías previas?" value={form.cirugias_previas ?? null} onChange={setBool("cirugias_previas")} disabled={ro} />
-                <BoolField label="¿Tiene médico tratante?" value={form.tiene_medico_tratante ?? null} onChange={setBool("tiene_medico_tratante")} disabled={ro} />
-              </div>
+              <BoolField label="¿Cirugías previas?" value={form.cirugias_previas ?? null} onChange={setBool("cirugias_previas")} disabled={ro} />
               {form.cirugias_previas && (
                 <Input label="Descripción de cirugías previas" value={form.cirugias_previas_desc ?? ""} onChange={set("cirugias_previas_desc")} placeholder="Año, tipo de cirugía, hospital" readOnly={ro} />
-              )}
-              {form.tiene_medico_tratante && (
-                <Input label="Nombre del médico tratante" value={form.medico_tratante_nombre ?? ""} onChange={set("medico_tratante_nombre")} readOnly={ro} />
               )}
               <Textarea label="Notas clínicas adicionales" value={form.notas_clinicas ?? ""} onChange={set("notas_clinicas")} rows={3} readOnly={ro} />
             </>
@@ -430,38 +537,212 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
           {/* ── MÉDICO ───────────────────────────────────────── */}
           {activeTab === "medico" && (
             <>
-              <SectionTitle>Médico Asignado</SectionTitle>
-              <div className="grid grid-cols-2 gap-4">
-                <Input label="Nombre completo del médico" value={form.medico_asignado_nombre ?? ""} onChange={set("medico_asignado_nombre")} placeholder="Dr. / Dra." readOnly={ro} />
-                <Input label="Especialidad" value={form.medico_especialidad ?? ""} onChange={set("medico_especialidad")} placeholder="ej: Cirugía General, Ortopedia" readOnly={ro} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <Input label="Teléfono" value={form.medico_telefono ?? ""} onChange={set("medico_telefono")} placeholder="10 dígitos o con lada" readOnly={ro} />
-                <Input label="Correo electrónico" type="email" value={form.medico_email ?? ""} onChange={set("medico_email")} readOnly={ro} />
-              </div>
+              <SectionTitle>Médico Tratante</SectionTitle>
 
-              <SectionTitle>Red y Hospitales</SectionTitle>
               <BoolField
-                label="¿Es parte de nuestra red de médicos?"
-                value={form.medico_en_red ?? null}
-                onChange={setBool("medico_en_red")}
+                label="¿Tiene médico tratante?"
+                value={form.tiene_medico_tratante ?? null}
+                onChange={(v) => {
+                  setBool("tiene_medico_tratante")(v)
+                  setMedicoQuery("")
+                  setMedicoResults([])
+                  setShowManualEntry(false)
+                }}
                 disabled={ro}
               />
-              <Textarea
-                label="Hospitales donde trabaja"
-                value={form.medico_hospitales ?? ""}
-                onChange={set("medico_hospitales")}
-                rows={3}
-                readOnly={ro}
-                placeholder="Nombre del hospital, ciudad — separar con coma o salto de línea"
-              />
-              <Input
-                label="Hospital sugerido para el procedimiento"
-                value={form.hospital_sugerido ?? ""}
-                onChange={set("hospital_sugerido")}
-                readOnly={ro}
-                placeholder="Hospital donde se realizará la cirugía"
-              />
+
+              {/* ── SÍ tiene médico tratante → buscar en catálogo ── */}
+              {form.tiene_medico_tratante === true && (
+                <div className="space-y-4">
+                  {/* Buscador en catálogo */}
+                  {!ro && (
+                    <div className="relative">
+                      <label className="text-xs font-medium mb-1 block" style={{ color: "var(--muted)" }}>
+                        Buscar médico en catálogo
+                      </label>
+                      <div className="relative">
+                        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                          style={{ color: "var(--muted)" }} />
+                        <input
+                          type="text"
+                          value={medicoQuery}
+                          onChange={(e) => { setMedicoQuery(e.target.value); searchMedicos(e.target.value) }}
+                          placeholder="Nombre del médico..."
+                          className="w-full h-9 pl-8 pr-8 rounded-lg border text-sm outline-none"
+                          style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }}
+                        />
+                        {medicoSearching && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin"
+                              style={{ borderColor: "var(--border)", borderTopColor: "var(--accent)" }} />
+                          </div>
+                        )}
+                      </div>
+                      {/* Dropdown de resultados */}
+                      {medicoResults.length > 0 && (
+                        <div className="absolute z-20 top-full left-0 right-0 mt-1 rounded-xl border shadow-lg overflow-hidden"
+                          style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+                          {medicoResults.map((m) => (
+                            <button key={m.id}
+                              onClick={() => selectMedicoCatalog(m)}
+                              className="w-full text-left px-4 py-3 text-sm transition-colors border-b last:border-0 hover:bg-[var(--surface-2)]"
+                              style={{ borderColor: "var(--border)", color: "var(--text)" }}>
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium">{m.nombre}</span>
+                                {m.en_red && (
+                                  <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                                    style={{ background: "#ECFDF5", color: "#059669" }}>En red</span>
+                                )}
+                              </div>
+                              <p className="text-xs mt-0.5" style={{ color: "var(--muted)" }}>
+                                {m.especialidad ?? "Sin especialidad"}
+                                {m.hospitales ? ` · ${m.hospitales.nombre}` : ""}
+                              </p>
+                            </button>
+                          ))}
+                          <button
+                            onClick={() => { setMedicoResults([]); setShowManualEntry(true) }}
+                            className="w-full text-left px-4 py-2.5 text-xs border-t"
+                            style={{ borderColor: "var(--border)", color: "var(--subtle)" }}>
+                            No aparece en catálogo — capturar datos manualmente
+                          </button>
+                        </div>
+                      )}
+                      {medicoQuery.length >= 2 && !medicoSearching && medicoResults.length === 0 && (
+                        <div className="mt-1 px-4 py-3 rounded-lg border text-xs"
+                          style={{ borderColor: "var(--border)", color: "var(--subtle)" }}>
+                          Sin resultados.{" "}
+                          <button className="underline" style={{ color: "var(--accent)" }}
+                            onClick={() => setShowManualEntry(true)}>
+                            Capturar datos manualmente
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Campos del médico — visibles si ya hay nombre o si es entrada manual */}
+                  {(form.medico_asignado_nombre || showManualEntry || ro) && (
+                    <div className="space-y-4">
+                      {form.medico_en_red && (
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium"
+                          style={{ background: "#ECFDF5", color: "#059669", border: "1px solid #A7F3D0" }}>
+                          ✓ Médico registrado en nuestra red
+                        </div>
+                      )}
+                      <div className="grid grid-cols-2 gap-4">
+                        <Input label="Nombre completo" value={form.medico_asignado_nombre ?? ""} onChange={set("medico_asignado_nombre")} placeholder="Dr. / Dra." readOnly={ro} />
+                        <EspecialidadSelect
+                          value={form.medico_especialidad ?? ""}
+                          onChange={(v) => setForm((f) => ({ ...f, medico_especialidad: v }))}
+                          disabled={ro}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <Input label="Teléfono" value={form.medico_telefono ?? ""} onChange={set("medico_telefono")} placeholder="10 dígitos" readOnly={ro} />
+                        <Input label="Correo electrónico" type="email" value={form.medico_email ?? ""} onChange={set("medico_email")} readOnly={ro} />
+                      </div>
+                      <BoolField label="¿Es parte de nuestra red?" value={form.medico_en_red ?? null} onChange={setBool("medico_en_red")} disabled={ro} />
+                      <Textarea
+                        label="Hospitales donde trabaja"
+                        value={form.medico_hospitales ?? ""}
+                        onChange={set("medico_hospitales")}
+                        rows={2}
+                        readOnly={ro}
+                        placeholder="Nombre del hospital, ciudad — separar por coma o salto de línea"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── NO tiene médico → ofrecer de nuestra red ────── */}
+              {form.tiene_medico_tratante === false && (
+                <div className="space-y-4">
+                  <div className="rounded-xl border p-4 space-y-4"
+                    style={{ background: "#F5F3FF", borderColor: "#DDD6FE" }}>
+                    <div className="flex items-start gap-2">
+                      <UserCheck size={15} style={{ color: "#7C3AED", flexShrink: 0, marginTop: 2 }} />
+                      <div>
+                        <p className="text-sm font-semibold" style={{ color: "#4C1D95" }}>
+                          Podemos conectar al paciente con un médico de nuestra red
+                        </p>
+                        <p className="text-xs mt-0.5" style={{ color: "#6D28D9" }}>
+                          Busca por nombre o especialidad y asigna un médico de referencia
+                        </p>
+                      </div>
+                    </div>
+
+                    {!ro && (
+                      <div className="relative">
+                        <div className="relative">
+                          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                            style={{ color: "#7C3AED" }} />
+                          <input
+                            type="text"
+                            value={medicoQuery}
+                            onChange={(e) => { setMedicoQuery(e.target.value); searchMedicos(e.target.value, true) }}
+                            placeholder="Buscar por nombre o especialidad..."
+                            className="w-full h-9 pl-8 pr-3 rounded-lg border text-sm outline-none"
+                            style={{ background: "#fff", borderColor: "#C4B5FD", color: "var(--text)" }}
+                          />
+                          {medicoSearching && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                              <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin"
+                                style={{ borderColor: "#DDD6FE", borderTopColor: "#7C3AED" }} />
+                            </div>
+                          )}
+                        </div>
+                        {medicoResults.length > 0 && (
+                          <div className="absolute z-20 top-full left-0 right-0 mt-1 rounded-xl border shadow-lg overflow-hidden"
+                            style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+                            {medicoResults.map((m) => (
+                              <button key={m.id}
+                                onClick={() => selectMedicoCatalog(m)}
+                                className="w-full text-left px-4 py-3 text-sm transition-colors border-b last:border-0 hover:bg-[var(--surface-2)]"
+                                style={{ borderColor: "var(--border)", color: "var(--text)" }}>
+                                <p className="font-medium">{m.nombre}</p>
+                                <p className="text-xs mt-0.5" style={{ color: "var(--muted)" }}>
+                                  {m.especialidad ?? ""}
+                                  {m.hospitales ? ` · ${m.hospitales.nombre}` : ""}
+                                </p>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {medicoQuery.length >= 2 && !medicoSearching && medicoResults.length === 0 && (
+                          <p className="mt-1 text-xs" style={{ color: "#7C3AED" }}>
+                            Sin médicos en red con ese nombre. Agrega médicos desde el Hub de Médicos.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Médico seleccionado de la red */}
+                  {form.medico_asignado_nombre && (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium"
+                        style={{ background: "#EFF6FF", color: "#2563EB", border: "1px solid #BFDBFE" }}>
+                        Médico de nuestra red asignado al lead
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <Input label="Nombre" value={form.medico_asignado_nombre ?? ""} onChange={set("medico_asignado_nombre")} readOnly={ro} />
+                        <EspecialidadSelect
+                          value={form.medico_especialidad ?? ""}
+                          onChange={(v) => setForm((f) => ({ ...f, medico_especialidad: v }))}
+                          disabled={ro}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <Input label="Teléfono" value={form.medico_telefono ?? ""} onChange={set("medico_telefono")} readOnly={ro} />
+                        <Input label="Correo electrónico" type="email" value={form.medico_email ?? ""} onChange={set("medico_email")} readOnly={ro} />
+                      </div>
+                      <Textarea label="Hospitales donde trabaja" value={form.medico_hospitales ?? ""} onChange={set("medico_hospitales")} rows={2} readOnly={ro} />
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
 
