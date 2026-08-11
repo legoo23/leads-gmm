@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import {
   ArrowLeft, Save, ChevronRight, User, Activity,
-  Stethoscope, Shield, Tag, Link2, Copy, Check, Hospital, FileText,
+  Stethoscope, Shield, Tag, Link2, Copy, Check, Hospital, FileText, UserCheck,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input, Select, Textarea } from "@/components/ui/input"
@@ -37,8 +37,7 @@ interface Lead {
   // Procedimiento
   procedimiento: string | null; categoria_quirurgica: string | null
   codigo_procedimiento: string | null; urgencia: string | null; costo_estimado: number | null
-  fecha_tentativa: string | null; hospital_sugerido: string | null
-  medico_asignado_nombre: string | null; estancia_estimada_dias: number | null
+  fecha_tentativa: string | null; estancia_estimada_dias: number | null
   notas_procedimiento: string | null
   // Póliza GMM
   id_aseguradora: number | null; tipo_plan: string | null; numero_poliza: string | null
@@ -55,6 +54,14 @@ interface Lead {
   fecha_autorizacion: string | null; carta_autorizacion_url: string | null
   contacto_aseguradora_nombre: string | null; contacto_aseguradora_telefono: string | null
   notas_validacion: string | null
+  // Médico asignado
+  medico_asignado_nombre: string | null
+  medico_telefono: string | null
+  medico_email: string | null
+  medico_especialidad: string | null
+  medico_en_red: boolean | null
+  medico_hospitales: string | null
+  hospital_sugerido: string | null
   // Internamiento
   tipo_ingreso: string | null; es_accidente: boolean | null
   fecha_inicio_sintomas: string | null; mecanismo_ingreso: string | null
@@ -228,6 +235,7 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
   const TABS = [
     { key: "contacto",      label: "Contacto",     icon: User },
     { key: "necesidad",     label: "Necesidad",     icon: Stethoscope },
+    { key: "medico",        label: "Médico",        icon: UserCheck },
     { key: "seguro",        label: "Seguro GMM",    icon: Shield },
     { key: "internamiento", label: "Internamiento", icon: Hospital },
     { key: "canal",         label: "Canal",         icon: Tag },
@@ -398,12 +406,7 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                 <Input label="Código CIE-9 / CPT" value={form.codigo_procedimiento ?? ""} onChange={set("codigo_procedimiento")} readOnly={ro} />
                 <Input label="Costo estimado (MXN)" type="number" value={form.costo_estimado ?? ""} onChange={set("costo_estimado")} readOnly={ro} />
               </div>
-              <div className="grid grid-cols-3 gap-4">
-                <Input label="Fecha tentativa deseada" type="date" value={form.fecha_tentativa ?? ""} onChange={set("fecha_tentativa")} readOnly={ro} />
-                <Input label="Hospital sugerido" value={form.hospital_sugerido ?? ""} onChange={set("hospital_sugerido")} readOnly={ro} />
-                <Input label="Médico asignado" value={form.medico_asignado_nombre ?? ""} onChange={set("medico_asignado_nombre")} readOnly={ro} />
-              </div>
-              <Input label="Estancia estimada (días)" type="number" value={form.estancia_estimada_dias ?? ""} onChange={set("estancia_estimada_dias")} readOnly={ro} />
+              <Input label="Fecha tentativa deseada" type="date" value={form.fecha_tentativa ?? ""} onChange={set("fecha_tentativa")} readOnly={ro} />
               <Textarea label="Notas del procedimiento" value={form.notas_procedimiento ?? ""} onChange={set("notas_procedimiento")} rows={3} readOnly={ro} />
 
               <SectionTitle>Padecimientos e Historia Clínica</SectionTitle>
@@ -422,6 +425,44 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                 <Input label="Nombre del médico tratante" value={form.medico_tratante_nombre ?? ""} onChange={set("medico_tratante_nombre")} readOnly={ro} />
               )}
               <Textarea label="Notas clínicas adicionales" value={form.notas_clinicas ?? ""} onChange={set("notas_clinicas")} rows={3} readOnly={ro} />
+            </>
+          )}
+
+          {/* ── MÉDICO ───────────────────────────────────────── */}
+          {activeTab === "medico" && (
+            <>
+              <SectionTitle>Médico Asignado</SectionTitle>
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Nombre completo del médico" value={form.medico_asignado_nombre ?? ""} onChange={set("medico_asignado_nombre")} placeholder="Dr. / Dra." readOnly={ro} />
+                <Input label="Especialidad" value={form.medico_especialidad ?? ""} onChange={set("medico_especialidad")} placeholder="ej: Cirugía General, Ortopedia" readOnly={ro} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Teléfono" value={form.medico_telefono ?? ""} onChange={set("medico_telefono")} placeholder="10 dígitos o con lada" readOnly={ro} />
+                <Input label="Correo electrónico" type="email" value={form.medico_email ?? ""} onChange={set("medico_email")} readOnly={ro} />
+              </div>
+
+              <SectionTitle>Red y Hospitales</SectionTitle>
+              <BoolField
+                label="¿Es parte de nuestra red de médicos?"
+                value={form.medico_en_red ?? null}
+                onChange={setBool("medico_en_red")}
+                disabled={ro}
+              />
+              <Textarea
+                label="Hospitales donde trabaja"
+                value={form.medico_hospitales ?? ""}
+                onChange={set("medico_hospitales")}
+                rows={3}
+                readOnly={ro}
+                placeholder="Nombre del hospital, ciudad — separar con coma o salto de línea"
+              />
+              <Input
+                label="Hospital sugerido para el procedimiento"
+                value={form.hospital_sugerido ?? ""}
+                onChange={set("hospital_sugerido")}
+                readOnly={ro}
+                placeholder="Hospital donde se realizará la cirugía"
+              />
             </>
           )}
 
