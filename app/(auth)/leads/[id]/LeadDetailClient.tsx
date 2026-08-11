@@ -397,14 +397,13 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                 </Select>
                 <Input label="Categoría quirúrgica" value={form.categoria_quirurgica ?? ""} onChange={set("categoria_quirurgica")} readOnly={ro} />
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <Select label="Urgencia" value={form.urgencia ?? "electiva"} onChange={set("urgencia")} disabled={ro}>
                   <option value="electiva">Electiva</option>
                   <option value="programada">Programada</option>
                   <option value="urgente">Urgente</option>
                 </Select>
                 <Input label="Código CIE-9 / CPT" value={form.codigo_procedimiento ?? ""} onChange={set("codigo_procedimiento")} readOnly={ro} />
-                <Input label="Costo estimado (MXN)" type="number" value={form.costo_estimado ?? ""} onChange={set("costo_estimado")} readOnly={ro} />
               </div>
               <Input label="Fecha tentativa deseada" type="date" value={form.fecha_tentativa ?? ""} onChange={set("fecha_tentativa")} readOnly={ro} />
               <Textarea label="Notas del procedimiento" value={form.notas_procedimiento ?? ""} onChange={set("notas_procedimiento")} rows={3} readOnly={ro} />
