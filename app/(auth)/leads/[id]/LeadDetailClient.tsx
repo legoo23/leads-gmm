@@ -303,10 +303,12 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
   async function save() {
     setSaving(true)
     setSaveMsg("")
-    // Strip all joined relations and encrypted fields (re-generated server-side from plaintext)
+    // Strip joined relations, encrypted fields y etapa/estado
+    // (etapa va por /etapa endpoint; excluirla aquí activa el auto-avance del API)
     const {
       vendedores: _v, aseguradoras: _a, campanas: _c, medicos: _m, hospitales: _h,
       id: _id,
+      etapa: _etapa, estado: _estado,
       telefono_enc: _te, telefono_hash: _th,
       email_enc: _ee, email_hash: _eh,
       curp_enc: _ce, curp_hash: _ch,
