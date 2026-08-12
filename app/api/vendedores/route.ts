@@ -32,16 +32,36 @@ export async function POST(req: NextRequest) {
   if (profile?.rol !== "admin") return NextResponse.json({ error: "Solo admin puede crear vendedores" }, { status: 403 })
 
   const body = await req.json()
-  const svc = await createServiceClient()
+  const svc  = await createServiceClient()
   const codigo_unico = generateVendorCode(PREFIX)
 
   const row = {
-    nombre: body.nombre,
-    telefono: normalizePhone(body.telefono),
-    email: normalizeEmail(body.email),
-    id_nivel: body.id_nivel,
+    nombre:              String(body.nombre ?? "").trim().toUpperCase(),
+    apellido_paterno:    body.apellido_paterno ? String(body.apellido_paterno).trim().toUpperCase() : null,
+    apellido_materno:    body.apellido_materno ? String(body.apellido_materno).trim().toUpperCase() : null,
+    telefono:            normalizePhone(body.telefono) || body.telefono || null,
+    telefono_alternativo: body.telefono_alternativo || null,
+    email:               normalizeEmail(body.email) || null,
+    id_nivel:            body.id_nivel ? parseInt(body.id_nivel) : null,
     codigo_unico,
-    activo: true,
+    activo:              true,
+    rfc:                 body.rfc   ? String(body.rfc).trim().toUpperCase()  : null,
+    curp:                body.curp  ? String(body.curp).trim().toUpperCase() : null,
+    fecha_nacimiento:    body.fecha_nacimiento || null,
+    // Dirección
+    calle:               body.calle           ? String(body.calle).toUpperCase()           : null,
+    numero_exterior:     body.numero_exterior ? String(body.numero_exterior).toUpperCase() : null,
+    colonia:             body.colonia         ? String(body.colonia).toUpperCase()         : null,
+    ciudad:              body.ciudad          ? String(body.ciudad).toUpperCase()          : null,
+    estado:              body.estado          ? String(body.estado).toUpperCase()          : null,
+    codigo_postal:       body.codigo_postal   || null,
+    // Datos bancarios
+    banco:               body.banco           ? String(body.banco).toUpperCase()           : null,
+    titular_cuenta:      body.titular_cuenta  ? String(body.titular_cuenta).toUpperCase() : null,
+    numero_cuenta:       body.numero_cuenta   || null,
+    clabe:               body.clabe           || null,
+    referencia_pago:     body.referencia_pago || null,
+    notas:               body.notas           ? String(body.notas).toUpperCase()           : null,
   }
 
   const { data, error } = await svc.from("vendedores").insert(row).select("*, niveles_comision(*)").single()

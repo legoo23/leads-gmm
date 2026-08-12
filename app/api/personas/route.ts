@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServiceClient, createClient } from "@/lib/supabase/server"
 import { decryptField } from "@/lib/crypto"
-import { sanitizeLimit } from "@/lib/audit"
 import { assertLicense } from "@/lib/license"
 
 export async function GET(req: NextRequest) {
@@ -11,41 +10,32 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
 
   const sp = req.nextUrl.searchParams
-  const limit = sanitizeLimit(sp.get("limit"), 50)
+  const q     = sp.get("q")?.trim() || null
+  const limit = Math.min(parseInt(sp.get("limit") ?? "50"), 200)
 
   const svc = await createServiceClient()
-
-  // Aggregate unique patients from leads (deduped by telefono_hash)
-  const { data: leads, error } = await svc.from("leads")
-    .select("id, nombre, apellido_paterno, nombre_enc, telefono_enc, email_enc, curp_enc, telefono_hash, fecha_captura")
-    .order("fecha_captura", { ascending: false })
-    .limit(limit)
+  const { data, error } = await svc.rpc("get_personas_list", {
+    p_q:     q,
+    p_limit: limit,
+  })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Group by telefono_hash for dedup
-  const seen = new Set<string>()
-  const personas = []
-  for (const lead of (leads ?? [])) {
-    const key = lead.telefono_hash ?? `id-${lead.id}`
-    if (seen.has(key)) continue
-    seen.add(key)
-
-    const countRes = await svc.from("leads").select("id", { count: "exact" })
-      .eq("telefono_hash", lead.telefono_hash)
-    const count = countRes.count ?? 1
-
-    personas.push({
-      id: lead.id,
-      nombre: lead.nombre,
-      apellido_paterno: lead.apellido_paterno,
-      telefono: decryptField(lead.telefono_enc),
-      email: decryptField(lead.email_enc),
-      curp: decryptField(lead.curp_enc),
-      leads_count: count,
-      fecha_primer_lead: lead.fecha_captura,
-    })
-  }
+  const personas = (Array.isArray(data) ? data : []).map((row: Record<string, unknown>) => ({
+    ref_lead_id:       row.ref_lead_id,
+    nombre:            row.nombre,
+    apellido_paterno:  row.apellido_paterno,
+    apellido_materno:  row.apellido_materno,
+    telefono:          decryptField(row.telefono_enc as string | null),
+    email:             decryptField(row.email_enc    as string | null),
+    curp:              decryptField(row.curp_enc     as string | null),
+    telefono_hash:     row.telefono_hash,
+    estado_ciudad:     row.estado_ciudad,
+    leads_count:       row.leads_count,
+    ultima_etapa:      row.ultima_etapa,
+    fecha_primer_lead: row.fecha_primer_lead,
+    fecha_ultimo_lead: row.fecha_ultimo_lead,
+  }))
 
   return NextResponse.json({ data: personas })
 }
