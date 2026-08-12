@@ -365,6 +365,13 @@ NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 SUPABASE_SERVICE_ROLE_KEY=eyJ...
 
+# Cifrado PII — AES-256-GCM — NUNCA cambiar con datos en producción
+# Generar: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+DATA_ENCRYPTION_KEY=<64 caracteres hexadecimales>
+
+# Licencia del software — RSA-SHA256
+LICENSE_KEY=<payloadB64>.<firmaB64>
+
 # WhatsApp — Meta Cloud API directa
 WHATSAPP_TOKEN=EAAx...
 WHATSAPP_PHONE_NUMBER_ID=1234567890
@@ -372,8 +379,12 @@ WHATSAPP_WEBHOOK_VERIFY_TOKEN=mi_token_secreto
 WHATSAPP_APP_SECRET=firma_hmac_secret
 
 # App
-NEXT_PUBLIC_APP_URL=https://tudominio.com   # para generar URLs de QR
+NEXT_PUBLIC_APP_URL=https://tudominio.com       # para generar URLs de QR
+NEXT_PUBLIC_VENDOR_CODE_PREFIX=GMM              # prefix de códigos de vendedor
 ```
+
+**Variables de solo servidor (nunca en `NEXT_PUBLIC_*`):**
+`SUPABASE_SERVICE_ROLE_KEY`, `DATA_ENCRYPTION_KEY`, `LICENSE_KEY`, `WHATSAPP_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_WEBHOOK_VERIFY_TOKEN`
 
 ---
 
@@ -562,6 +573,86 @@ export function generateVendorCode(prefix: string, length = 6): string {
 | 2026-08-10 | Carta de autorización → Supabase Storage | PDF subible; URL almacenada en columna `carta_autorizacion_url` del lead |
 | 2026-08-10 | Etapa activa en columna `etapa` (no en campo `notas`) | Permite filtrar SQL directamente; no es un workaround como en sistemas previos |
 | 2026-08-10 | Snapshot del nivel de comisión al convertir | Preserva el monto histórico aunque el nivel cambie después |
+| 2026-08-12 | Cifrado AES-256-GCM para campos PII | Protección de datos médicos y personales en reposo; requiere `DATA_ENCRYPTION_KEY` |
+| 2026-08-12 | Licencia RSA-SHA256 en Route Handlers | Protección del software; `assertLicense()` como primera línea de cada endpoint |
+| 2026-08-12 | ShellClient como wrapper del layout | `layout.tsx` debe ser Server Component para auth; estado del sidebar vive en un Client Component separado |
+| 2026-08-12 | Dual-view responsive (tarjetas móvil + tabla desktop) | Agentes trabajan en campo con celulares/tablets; las tablas no son usables en pantallas < 640px |
+| 2026-08-12 | Modal sheet pattern en móvil | `items-end sm:items-center` + `rounded-t-2xl sm:rounded-2xl` + `max-h-[92dvh]` para comportamiento nativo iOS/Android |
+| 2026-08-12 | Filtros colapsables en móvil con indicador de activos | Sin espacio para filtros siempre visibles en 375px; el indicador "●" avisa que hay filtros aplicados |
+| 2026-08-12 | Funciones SQL para analítica (RPC) | CTEs + FILTER aggregates son más eficientes que múltiples queries desde el cliente |
+| 2026-08-12 | `save()` en LeadDetail excluye `etapa`/`estado` del payload | Activa el auto-avance de etapas; incluirlos anularía la lógica de avance |
+| 2026-08-12 | Conteo separado de data query | `count: "exact"` en queries con JOINs es lento; dos queries paralelas + `head: true` es más eficiente |
+| 2026-08-12 | Todo texto en mayúsculas en DB | Uniformidad visual; búsquedas case-insensitive más simples; aplicado en API antes de guardar |
+
+---
+
+## 15. Diseño responsivo — convenciones
+
+### Breakpoints del sistema
+
+| Tailwind | px | Uso |
+|---|---|---|
+| (base) | 0+ | Móvil — tarjetas, drawer, filtros colapsables |
+| `sm:` | 640+ | Tablet — tablas visibles, filtros siempre abiertos |
+| `md:` | 768+ | Grid 2→4 columnas en KPIs y analítica |
+| `lg:` | 1024+ | Desktop — sidebar fija siempre visible |
+
+### Componentes responsivos clave
+
+**Sidebar:** `hidden lg:flex` (desktop fija) + `lg:hidden fixed` (móvil drawer con slide-in)
+**Topbar:** `justify-between` con botón hamburger `lg:hidden`
+**ShellClient:** maneja estado `sidebarOpen`, backdrop y cierre automático al navegar
+**Modal:** sheet desde abajo en móvil (`items-end`), centrado en desktop (`sm:items-center`)
+
+### Patrón dual-view (estándar en todas las páginas de lista)
+
+```tsx
+{/* Tarjetas — solo en móvil */}
+<div className="sm:hidden space-y-2">{/* card por item */}</div>
+
+{/* Tabla — tablet y desktop */}
+<div className="hidden sm:block overflow-hidden rounded-xl border">
+  <div className="overflow-x-auto">
+    <table>{/* ... */}</table>
+  </div>
+</div>
+```
+
+### Texto adaptativo en botones
+
+```tsx
+<span className="hidden sm:inline">Nuevo lead</span>
+<span className="sm:hidden">Nuevo</span>
+```
+
+---
+
+## 16. Seguridad — resumen ejecutivo
+
+Ver `docs/DESARROLLO.md` y memoria `security_model.md` para detalle completo.
+
+**Reglas que no se negocian:**
+1. `assertLicense()` — primera línea de cada Route Handler
+2. `SUPABASE_SERVICE_ROLE_KEY` — solo en servidor, nunca en cliente
+3. `DATA_ENCRYPTION_KEY` — no cambiar con datos en producción, backup obligatorio
+4. Webhook WhatsApp — validar HMAC-SHA256 antes de procesar cualquier body
+5. RLS activo en todas las tablas — nunca deshabilitar
+6. `LEADS-GMM-PRIVATE-KEY.pem` — fuera del repositorio, en Desktop
+
+**Archivos de referencia:**
+- `lib/crypto.ts` — `encryptField`, `decryptField`, `hashField`, `maskField`
+- `lib/license.ts` — `assertLicense`, `checkLicense`
+- `lib/audit.ts` — `logAudit`, `sanitizeLimit`, `API_MAX_RECORDS`
+
+---
+
+## 17. Documentación operativa
+
+| Documento | Ubicación | Contenido |
+|---|---|---|
+| Esta guía | `CLAUDE.md` | Arquitectura, decisiones, patrones para sesiones de IA |
+| Guía de despliegue | `docs/DESPLIEGUE.md` | Setup completo: Supabase, Vercel, WhatsApp, checklist |
+| Guía de desarrollo | `docs/DESARROLLO.md` | Convenciones, patrones de código, SQL, git flow |
 
 ---
 
