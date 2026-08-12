@@ -216,6 +216,7 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
 
   // Búsqueda de médicos
   const [medicoQuery, setMedicoQuery] = useState("")
+  const [medicoFiltroEstado, setMedicoFiltroEstado] = useState("")
   const [medicoResults, setMedicoResults] = useState<MedicoResult[]>([])
   const [medicoSearching, setMedicoSearching] = useState(false)
   const [showManualEntry, setShowManualEntry] = useState(false)
@@ -263,13 +264,15 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
   const setBool = (k: string) => (v: boolean | null) =>
     setForm((f) => ({ ...f, [k]: v }))
 
-  const searchMedicos = useCallback((q: string, soloRed = false) => {
+  const searchMedicos = useCallback((q: string, soloRed = false, estado = "") => {
     if (medicoSearchTimeout.current) clearTimeout(medicoSearchTimeout.current)
-    if (q.length < 2) { setMedicoResults([]); setMedicoSearching(false); return }
+    if (q.length < 2 && !estado) { setMedicoResults([]); setMedicoSearching(false); return }
     setMedicoSearching(true)
     medicoSearchTimeout.current = setTimeout(async () => {
-      const params = new URLSearchParams({ q, limit: "6" })
+      const params = new URLSearchParams({ limit: "12" })
+      if (q.length >= 2) params.set("q", q)
       if (soloRed) params.set("red", "true")
+      if (estado) params.set("cobertura", estado)
       const res = await fetch(`/api/medicos?${params}`)
       const { data } = await res.json()
       setMedicoResults(data ?? [])
@@ -538,6 +541,7 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                 onChange={(v) => {
                   setBool("tiene_medico_tratante")(v)
                   setMedicoQuery("")
+                  setMedicoFiltroEstado("")
                   setMedicoResults([])
                   setShowManualEntry(false)
                 }}
@@ -547,62 +551,82 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
               {/* ── SÍ tiene médico tratante → buscar en catálogo ── */}
               {form.tiene_medico_tratante === true && (
                 <div className="space-y-4">
-                  {/* Buscador en catálogo */}
                   {!ro && (
-                    <div className="relative">
-                      <label className="text-xs font-medium mb-1 block" style={{ color: "var(--muted)" }}>
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium block" style={{ color: "var(--muted)" }}>
                         Buscar médico en catálogo
                       </label>
-                      <div className="relative">
-                        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                          style={{ color: "var(--muted)" }} />
-                        <input
-                          type="text"
-                          value={medicoQuery}
-                          onChange={(e) => { setMedicoQuery(e.target.value); searchMedicos(e.target.value) }}
-                          placeholder="Nombre del médico..."
-                          className="w-full h-9 pl-8 pr-8 rounded-lg border text-sm outline-none"
-                          style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)", textTransform: "uppercase" }}
-                        />
-                        {medicoSearching && (
-                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                            <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin"
-                              style={{ borderColor: "var(--border)", borderTopColor: "var(--accent)" }} />
-                          </div>
-                        )}
+                      {/* Filtros: estado + nombre */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <select
+                          value={medicoFiltroEstado}
+                          onChange={(e) => { setMedicoFiltroEstado(e.target.value); searchMedicos(medicoQuery, false, e.target.value) }}
+                          className="h-9 px-3 rounded-lg border text-sm outline-none appearance-none"
+                          style={{
+                            background: "var(--surface)", borderColor: "var(--border)",
+                            color: medicoFiltroEstado ? "var(--text)" : "var(--muted)",
+                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+                            backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center",
+                            backgroundSize: "14px", paddingRight: "32px",
+                          }}
+                        >
+                          <option value="">— Estado —</option>
+                          {GEO_ESTADOS.map((s) => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                        <div className="relative">
+                          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                            style={{ color: "var(--muted)" }} />
+                          <input
+                            type="text"
+                            value={medicoQuery}
+                            onChange={(e) => { setMedicoQuery(e.target.value); searchMedicos(e.target.value, false, medicoFiltroEstado) }}
+                            placeholder="Nombre del médico..."
+                            className="w-full h-9 pl-8 pr-3 rounded-lg border text-sm outline-none"
+                            style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)", textTransform: "uppercase" }}
+                          />
+                        </div>
                       </div>
-                      {/* Dropdown de resultados */}
-                      {medicoResults.length > 0 && (
-                        <div className="absolute z-20 top-full left-0 right-0 mt-1 rounded-xl border shadow-lg overflow-hidden"
-                          style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
-                          {medicoResults.map((m) => (
-                            <button key={m.id}
-                              onClick={() => selectMedicoCatalog(m)}
-                              className="w-full text-left px-4 py-3 text-sm transition-colors border-b last:border-0 hover:bg-[var(--surface-2)]"
-                              style={{ borderColor: "var(--border)", color: "var(--text)" }}>
-                              <div className="flex items-center justify-between">
-                                <span className="font-medium">{m.nombre}</span>
-                                {m.en_red && (
-                                  <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                                    style={{ background: "#ECFDF5", color: "#059669" }}>En red</span>
-                                )}
-                              </div>
-                              <p className="text-xs mt-0.5" style={{ color: "var(--muted)" }}>
-                                {m.especialidad ?? "Sin especialidad"}
-                                {m.hospitales ? ` · ${m.hospitales.nombre}` : ""}
-                              </p>
-                            </button>
-                          ))}
+
+                      {/* Resultados inline — scrollable, nunca se cortan */}
+                      {medicoSearching && (
+                        <div className="flex items-center gap-2 px-3 py-2 text-xs" style={{ color: "var(--muted)" }}>
+                          <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin"
+                            style={{ borderColor: "var(--border)", borderTopColor: "var(--accent)" }} />
+                          Buscando...
+                        </div>
+                      )}
+                      {!medicoSearching && medicoResults.length > 0 && (
+                        <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)" }}>
+                          <div className="overflow-y-auto divide-y" style={{ maxHeight: "240px", borderColor: "var(--border)" }}>
+                            {medicoResults.map((m) => (
+                              <button key={m.id}
+                                onClick={() => { selectMedicoCatalog(m); setMedicoFiltroEstado("") }}
+                                className="w-full text-left px-4 py-3 text-sm transition-colors hover:bg-[var(--surface-2)]"
+                                style={{ color: "var(--text)" }}>
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium">{m.nombre}</span>
+                                  {m.en_red && (
+                                    <span className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ml-2"
+                                      style={{ background: "#ECFDF5", color: "#059669" }}>En red</span>
+                                  )}
+                                </div>
+                                <p className="text-xs mt-0.5" style={{ color: "var(--muted)" }}>
+                                  {m.especialidad ?? "Sin especialidad"}
+                                  {m.hospitales ? ` · ${m.hospitales.nombre}` : ""}
+                                </p>
+                              </button>
+                            ))}
+                          </div>
                           <button
                             onClick={() => { setMedicoResults([]); setShowManualEntry(true) }}
                             className="w-full text-left px-4 py-2.5 text-xs border-t"
-                            style={{ borderColor: "var(--border)", color: "var(--subtle)" }}>
+                            style={{ borderColor: "var(--border)", color: "var(--subtle)", background: "var(--surface-2)" }}>
                             No aparece en catálogo — capturar datos manualmente
                           </button>
                         </div>
                       )}
-                      {medicoQuery.length >= 2 && !medicoSearching && medicoResults.length === 0 && (
-                        <div className="mt-1 px-4 py-3 rounded-lg border text-xs"
+                      {!medicoSearching && (medicoQuery.length >= 2 || medicoFiltroEstado) && medicoResults.length === 0 && (
+                        <div className="px-4 py-3 rounded-lg border text-xs"
                           style={{ borderColor: "var(--border)", color: "var(--subtle)" }}>
                           Sin resultados.{" "}
                           <button className="underline" style={{ color: "var(--accent)" }}
@@ -653,60 +677,84 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
               {/* ── NO tiene médico → ofrecer de nuestra red ────── */}
               {form.tiene_medico_tratante === false && (
                 <div className="space-y-4">
-                  <div className="rounded-xl border p-4 space-y-4"
+                  <div className="rounded-xl border p-4 space-y-3"
                     style={{ background: "#F5F3FF", borderColor: "#DDD6FE" }}>
                     <div className="flex items-start gap-2">
                       <UserCheck size={15} style={{ color: "#7C3AED", flexShrink: 0, marginTop: 2 }} />
                       <div>
                         <p className="text-sm font-semibold" style={{ color: "#4C1D95" }}>
-                          Podemos conectar al paciente con un médico de nuestra red
+                          Conectar con un médico de nuestra red
                         </p>
                         <p className="text-xs mt-0.5" style={{ color: "#6D28D9" }}>
-                          Busca por nombre o especialidad y asigna un médico de referencia
+                          Filtra por estado y nombre para encontrar al médico indicado
                         </p>
                       </div>
                     </div>
 
                     {!ro && (
-                      <div className="relative">
-                        <div className="relative">
-                          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                            style={{ color: "#7C3AED" }} />
-                          <input
-                            type="text"
-                            value={medicoQuery}
-                            onChange={(e) => { setMedicoQuery(e.target.value); searchMedicos(e.target.value, true) }}
-                            placeholder="Buscar por nombre o especialidad..."
-                            className="w-full h-9 pl-8 pr-3 rounded-lg border text-sm outline-none"
-                            style={{ background: "#fff", borderColor: "#C4B5FD", color: "var(--text)", textTransform: "uppercase" }}
-                          />
-                          {medicoSearching && (
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                              <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin"
-                                style={{ borderColor: "#DDD6FE", borderTopColor: "#7C3AED" }} />
-                            </div>
-                          )}
+                      <div className="space-y-2">
+                        {/* Filtros: estado + nombre */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <select
+                            value={medicoFiltroEstado}
+                            onChange={(e) => { setMedicoFiltroEstado(e.target.value); searchMedicos(medicoQuery, true, e.target.value) }}
+                            className="h-9 px-3 rounded-lg border text-sm outline-none appearance-none"
+                            style={{
+                              background: "#fff", borderColor: "#C4B5FD",
+                              color: medicoFiltroEstado ? "#4C1D95" : "#7C3AED",
+                              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237C3AED' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+                              backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center",
+                              backgroundSize: "14px", paddingRight: "32px",
+                            }}
+                          >
+                            <option value="">— Estado —</option>
+                            {GEO_ESTADOS.map((s) => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                          <div className="relative">
+                            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                              style={{ color: "#7C3AED" }} />
+                            <input
+                              type="text"
+                              value={medicoQuery}
+                              onChange={(e) => { setMedicoQuery(e.target.value); searchMedicos(e.target.value, true, medicoFiltroEstado) }}
+                              placeholder="Nombre o especialidad..."
+                              className="w-full h-9 pl-8 pr-3 rounded-lg border text-sm outline-none"
+                              style={{ background: "#fff", borderColor: "#C4B5FD", color: "var(--text)", textTransform: "uppercase" }}
+                            />
+                          </div>
                         </div>
-                        {medicoResults.length > 0 && (
-                          <div className="absolute z-20 top-full left-0 right-0 mt-1 rounded-xl border shadow-lg overflow-hidden"
-                            style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
-                            {medicoResults.map((m) => (
-                              <button key={m.id}
-                                onClick={() => selectMedicoCatalog(m)}
-                                className="w-full text-left px-4 py-3 text-sm transition-colors border-b last:border-0 hover:bg-[var(--surface-2)]"
-                                style={{ borderColor: "var(--border)", color: "var(--text)" }}>
-                                <p className="font-medium">{m.nombre}</p>
-                                <p className="text-xs mt-0.5" style={{ color: "var(--muted)" }}>
-                                  {m.especialidad ?? ""}
-                                  {m.hospitales ? ` · ${m.hospitales.nombre}` : ""}
-                                </p>
-                              </button>
-                            ))}
+
+                        {/* Resultados inline scrollable */}
+                        {medicoSearching && (
+                          <div className="flex items-center gap-2 px-3 py-2 text-xs" style={{ color: "#7C3AED" }}>
+                            <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin"
+                              style={{ borderColor: "#DDD6FE", borderTopColor: "#7C3AED" }} />
+                            Buscando en red...
                           </div>
                         )}
-                        {medicoQuery.length >= 2 && !medicoSearching && medicoResults.length === 0 && (
-                          <p className="mt-1 text-xs" style={{ color: "#7C3AED" }}>
-                            Sin médicos en red con ese nombre. Agrega médicos desde el Hub de Médicos.
+                        {!medicoSearching && medicoResults.length > 0 && (
+                          <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#C4B5FD" }}>
+                            <div className="overflow-y-auto divide-y" style={{ maxHeight: "240px", borderColor: "#DDD6FE" }}>
+                              {medicoResults.map((m) => (
+                                <button key={m.id}
+                                  onClick={() => { selectMedicoCatalog(m); setMedicoFiltroEstado("") }}
+                                  className="w-full text-left px-4 py-3 text-sm transition-colors"
+                                  style={{ background: "#fff", color: "var(--text)" }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.background = "#EDE9FE")}
+                                  onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}>
+                                  <p className="font-medium">{m.nombre}</p>
+                                  <p className="text-xs mt-0.5" style={{ color: "#7C3AED" }}>
+                                    {m.especialidad ?? "Sin especialidad"}
+                                    {m.hospitales ? ` · ${m.hospitales.nombre}` : ""}
+                                  </p>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {!medicoSearching && (medicoQuery.length >= 2 || medicoFiltroEstado) && medicoResults.length === 0 && (
+                          <p className="text-xs" style={{ color: "#7C3AED" }}>
+                            Sin médicos en red con esa búsqueda. Agrega médicos desde el Hub de Médicos.
                           </p>
                         )}
                       </div>
