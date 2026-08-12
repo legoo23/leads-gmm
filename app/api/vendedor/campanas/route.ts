@@ -13,10 +13,11 @@ export async function GET(_req: NextRequest) {
 
   const { data, error } = await svc
     .from("campanas")
-    .select("id, nombre, procedimiento, fecha_inicio, fecha_fin, activa")
+    .select("id, nombre, procedimiento_target, descripcion, vigencia_inicio, vigencia_fin, codigo_unico")
     .eq("activa", true)
-    .or(`fecha_fin.is.null,fecha_fin.gte.${today}`)
-    .order("created_at", { ascending: false })
+    .eq("visible_vendedores", true)
+    .or(`vigencia_fin.is.null,vigencia_fin.gte.${today}`)
+    .order("fecha_creacion", { ascending: false })
     .limit(20)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

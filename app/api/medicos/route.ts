@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   let query = svc
     .from("medicos")
     .select(
-      "id, nombre, especialidad, sub_especialidad, telefono, telefono_secundario, email, cedula, cobertura, consultorio, en_red, activo",
+      "id, nombre, especialidad, sub_especialidad, hospital, telefono, telefono_secundario, email, cedula, cobertura, consultorio, aseguradoras_aceptadas, notas, en_red, activo",
       { count: "exact" }
     )
     .eq("activo", true)
