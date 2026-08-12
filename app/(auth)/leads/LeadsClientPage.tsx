@@ -12,6 +12,7 @@ interface Lead {
   folio: string
   nombre: string
   apellido_paterno: string | null
+  apellido_materno: string | null
   etapa: string
   procedimiento: string | null
   fuente: string | null
@@ -41,13 +42,20 @@ export default function LeadsClientPage({ rol, userId }: { rol: string; userId: 
   const [loading, setLoading] = useState(true)
   const [etapa, setEtapa] = useState("")
   const [q, setQ] = useState("")
+  const [debouncedQ, setDebouncedQ] = useState("")
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list")
+
+  // Debounce search — avoids one API call per keystroke
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(q), 300)
+    return () => clearTimeout(t)
+  }, [q])
 
   const fetchLeads = useCallback(async () => {
     setLoading(true)
     const params = new URLSearchParams()
     if (etapa) params.set("etapa", etapa)
-    if (q) params.set("q", q)
+    if (debouncedQ) params.set("q", debouncedQ)
     params.set("limit", "50")
 
     const res = await fetch(`/api/leads?${params}`)
@@ -57,7 +65,7 @@ export default function LeadsClientPage({ rol, userId }: { rol: string; userId: 
       setTotal(json.total ?? 0)
     }
     setLoading(false)
-  }, [etapa, q])
+  }, [etapa, debouncedQ])
 
   useEffect(() => { fetchLeads() }, [fetchLeads])
 
@@ -182,7 +190,7 @@ export default function LeadsClientPage({ rol, userId }: { rol: string; userId: 
                     </td>
                     <td className="px-4 py-3">
                       <span className="font-medium text-xs" style={{ color: "var(--text)" }}>
-                        {lead.nombre} {lead.apellido_paterno ?? ""}
+                        {lead.nombre} {lead.apellido_paterno ?? ""} {lead.apellido_materno ?? ""}
                       </span>
                       {lead.vendedores && (
                         <div className="text-xs mt-0.5" style={{ color: "var(--subtle)" }}>

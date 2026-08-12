@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServiceClient } from "@/lib/supabase/server"
 import { encryptField, hashField } from "@/lib/crypto"
-import { logAudit, sanitizeLimit, API_MAX_RECORDS } from "@/lib/audit"
+import { logAudit, sanitizeLimit } from "@/lib/audit"
 import { normalizePhone, normalizeEmail, normalizeCurp, generateFolio } from "@/lib/utils"
 import { assertLicense } from "@/lib/license"
 import { createClient } from "@/lib/supabase/server"
@@ -19,29 +19,45 @@ export async function GET(req: NextRequest) {
   const limit = sanitizeLimit(sp.get("limit"), 25)
   const offset = parseInt(sp.get("offset") ?? "0")
   const etapa = sp.get("etapa")
-  const search = sp.get("q")
+  const rawSearch = sp.get("q")
+  const search = rawSearch ? rawSearch.replace(/,/g, "").trim() : null
 
   const svc = await createServiceClient()
-  let query = svc.from("leads")
+
+  // Main data query — no count here (joins make count slow)
+  let dataQuery = svc.from("leads")
     .select(`
-      id, folio, nombre, apellido_paterno, apellido_paterno,
-      etapa, prioridad, procedimiento, fuente,
+      id, folio, nombre, apellido_paterno, apellido_materno,
+      etapa, procedimiento, fuente,
       fecha_captura, fecha_contacto, en_cola_revision,
       id_agente, id_vendedor,
-      nombre_enc, telefono_hash,
       vendedores:id_vendedor(nombre, codigo_unico),
       aseguradoras:id_aseguradora(nombre)
-    `, { count: "exact" })
+    `)
     .order("fecha_captura", { ascending: false })
     .range(offset, offset + limit - 1)
 
-  if (etapa) query = query.eq("etapa", etapa)
-  if (rol === "agente") query = query.eq("id_agente", user.id)
+  // Count query — lightweight (no joins) runs in parallel
+  let countQuery = svc.from("leads").select("id", { count: "exact", head: true })
 
-  const { data, error, count } = await query
+  // Apply shared filters to both queries
+  if (etapa) {
+    dataQuery = dataQuery.eq("etapa", etapa)
+    countQuery = countQuery.eq("etapa", etapa)
+  }
+  if (rol === "agente") {
+    dataQuery = dataQuery.eq("id_agente", user.id)
+    countQuery = countQuery.eq("id_agente", user.id)
+  }
+  if (search) {
+    const filter = `nombre.ilike.*${search}*,apellido_paterno.ilike.*${search}*,folio.ilike.*${search}*`
+    dataQuery = dataQuery.or(filter)
+    countQuery = countQuery.or(filter)
+  }
+
+  const [{ data, error }, { count }] = await Promise.all([dataQuery, countQuery])
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  await logAudit({ accion: "list_leads", tabla: "leads", id_usuario: user.id, metadata: { etapa, count } })
   return NextResponse.json({ data, total: count, limit, offset })
 }
 
