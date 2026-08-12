@@ -1,14 +1,15 @@
 "use client"
 import { useState } from "react"
-import { LogOut, ChevronDown } from "lucide-react"
+import { LogOut, ChevronDown, Menu } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 
 interface TopbarProps {
   user: { email: string; nombre: string; rol: string }
+  onMenuClick?: () => void
 }
 
-export default function Topbar({ user }: TopbarProps) {
+export default function Topbar({ user, onMenuClick }: TopbarProps) {
   const [open, setOpen] = useState(false)
   const router = useRouter()
   const supabase = createClient()
@@ -24,8 +25,23 @@ export default function Topbar({ user }: TopbarProps) {
     : user.email[0].toUpperCase()
 
   return (
-    <header className="flex items-center justify-end h-14 px-6 border-b flex-shrink-0"
+    <header className="flex items-center justify-between h-14 px-3 sm:px-6 border-b flex-shrink-0"
       style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+
+      {/* Hamburger — visible only on mobile/tablet */}
+      <button
+        onClick={onMenuClick}
+        className="lg:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-[var(--surface-2)] transition-colors"
+        style={{ color: "var(--muted)" }}
+        aria-label="Abrir menú"
+      >
+        <Menu size={20} />
+      </button>
+
+      {/* Spacer on desktop (hamburger is hidden, so push user menu to right) */}
+      <div className="hidden lg:block" />
+
+      {/* User menu */}
       <div className="relative">
         <button
           onClick={() => setOpen(!open)}
@@ -35,7 +51,7 @@ export default function Topbar({ user }: TopbarProps) {
             style={{ background: "var(--accent)" }}>
             {initials}
           </div>
-          <span className="text-sm font-medium" style={{ color: "var(--text)" }}>
+          <span className="hidden sm:block text-sm font-medium" style={{ color: "var(--text)" }}>
             {user.nombre || user.email}
           </span>
           <ChevronDown size={13} style={{ color: "var(--muted)" }} />

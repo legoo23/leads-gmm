@@ -3,7 +3,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   FileText, Users, Megaphone, Stethoscope,
-  Building2, Headphones, Settings, LayoutDashboard
+  Building2, Headphones, Settings, LayoutDashboard, X
 } from "lucide-react"
 
 const HUBS = [
@@ -16,23 +16,40 @@ const HUBS = [
   { href: "/admin",      icon: Settings,    label: "Admin",       roles: ["admin"] },
 ]
 
-export default function Sidebar({ rol }: { rol: string }) {
+interface SidebarProps {
+  rol: string
+  open?: boolean
+  onClose?: () => void
+}
+
+export default function Sidebar({ rol, open = false, onClose }: SidebarProps) {
   const pathname = usePathname()
   const items = HUBS.filter((h) => h.roles.includes(rol))
 
-  return (
-    <aside className="flex flex-col w-56 flex-shrink-0 h-full border-r"
-      style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+  const content = (
+    <>
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-4 h-14 border-b flex-shrink-0"
+      <div className="flex items-center justify-between px-4 h-14 border-b flex-shrink-0"
         style={{ borderColor: "var(--border)" }}>
-        <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-          style={{ background: "var(--accent)" }}>
-          <LayoutDashboard size={14} color="white" />
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+            style={{ background: "var(--accent)" }}>
+            <LayoutDashboard size={14} color="white" />
+          </div>
+          <span className="font-bold text-sm tracking-tight" style={{ color: "var(--text)" }}>
+            Leads GMM
+          </span>
         </div>
-        <span className="font-bold text-sm tracking-tight" style={{ color: "var(--text)" }}>
-          Leads GMM
-        </span>
+        {/* Close button — mobile only */}
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--surface-2)] transition-colors"
+            style={{ color: "var(--muted)" }}
+          >
+            <X size={16} />
+          </button>
+        )}
       </div>
 
       {/* Nav */}
@@ -44,13 +61,14 @@ export default function Sidebar({ rol }: { rol: string }) {
               <Link
                 key={href}
                 href={href}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                onClick={onClose}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
                 style={{
                   background: active ? "var(--accent-bg)" : "transparent",
                   color: active ? "var(--accent)" : "var(--muted)",
                 }}
               >
-                <Icon size={15} />
+                <Icon size={16} />
                 {label}
               </Link>
             )
@@ -62,6 +80,30 @@ export default function Sidebar({ rol }: { rol: string }) {
       <div className="px-4 py-3 border-t text-xs" style={{ borderColor: "var(--border)", color: "var(--subtle)" }}>
         <span className="uppercase tracking-wider font-semibold">{rol}</span>
       </div>
-    </aside>
+    </>
+  )
+
+  return (
+    <>
+      {/* Desktop — always visible fixed sidebar */}
+      <aside
+        className="hidden lg:flex flex-col w-56 flex-shrink-0 h-full border-r"
+        style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+      >
+        {content}
+      </aside>
+
+      {/* Mobile/tablet — overlay drawer */}
+      <aside
+        className={`
+          lg:hidden fixed inset-y-0 left-0 z-50 flex flex-col w-72 border-r
+          transition-transform duration-300 ease-in-out
+          ${open ? "translate-x-0" : "-translate-x-full"}
+        `}
+        style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+      >
+        {content}
+      </aside>
+    </>
   )
 }

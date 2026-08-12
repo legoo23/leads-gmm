@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
-import Sidebar from "@/components/ui/sidebar"
-import Topbar from "@/components/ui/topbar"
+import ShellClient from "@/components/ui/shell-client"
 
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -15,14 +14,11 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
     .single()
 
   return (
-    <div className="flex h-full">
-      <Sidebar rol={profile?.rol ?? "agente"} />
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <Topbar user={{ email: user.email ?? "", nombre: profile?.nombre ?? "", rol: profile?.rol ?? "agente" }} />
-        <main className="flex-1 overflow-y-auto p-6" style={{ background: "var(--bg)" }}>
-          {children}
-        </main>
-      </div>
-    </div>
+    <ShellClient
+      user={{ email: user.email ?? "", nombre: profile?.nombre ?? "", rol: profile?.rol ?? "agente" }}
+      rol={profile?.rol ?? "agente"}
+    >
+      {children}
+    </ShellClient>
   )
 }

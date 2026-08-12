@@ -21,13 +21,18 @@ export function Modal({ open, onClose, title, children, size = "md" }: ModalProp
 
   if (!open) return null
 
-  const widths = { sm: "max-w-sm", md: "max-w-lg", lg: "max-w-2xl" }
+  const widths = { sm: "sm:max-w-sm", md: "sm:max-w-lg", lg: "sm:max-w-2xl" }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div
-        className={cn("relative w-full rounded-2xl flex flex-col max-h-[90vh]", widths[size])}
+        className={cn(
+          "relative w-full flex flex-col",
+          "max-h-[92dvh] sm:max-h-[90vh]",
+          "rounded-t-2xl sm:rounded-2xl",
+          widths[size]
+        )}
         style={{ background: "var(--surface)", boxShadow: "0 24px 60px rgba(0,0,0,.18)" }}
       >
         {title && (

@@ -236,21 +236,21 @@ export default function PersonasPage() {
   const inputStyle = { background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <div>
-          <h1 className="text-lg font-semibold" style={{ color: "var(--text)" }}>Personas</h1>
+          <h1 className="text-base sm:text-lg font-semibold" style={{ color: "var(--text)" }}>Personas</h1>
           <p className="text-xs mt-0.5" style={{ color: "var(--subtle)" }}>
-            Expediente unificado de pacientes
-            {!loading && <span className="ml-1">· {personas.length} encontradas</span>}
+            Expediente unificado
+            {!loading && <span className="ml-1">· {personas.length}</span>}
           </p>
         </div>
       </div>
 
-      {/* Filtros */}
+      {/* Búsqueda */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-56">
+        <div className="relative flex-1 min-w-40">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--subtle)" }} />
           <input
             value={q}
@@ -269,8 +269,56 @@ export default function PersonasPage() {
         )}
       </div>
 
-      {/* Tabla */}
-      <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)" }}>
+      {/* ── Vista móvil: tarjetas ── */}
+      <div className="sm:hidden space-y-2">
+        {loading && (
+          <div className="text-center py-10 text-xs" style={{ color: "var(--subtle)" }}>Cargando...</div>
+        )}
+        {!loading && personas.length === 0 && (
+          <div className="flex flex-col items-center py-14 gap-2">
+            <Users size={28} style={{ color: "var(--border)" }} />
+            <p className="text-xs" style={{ color: "var(--subtle)" }}>
+              {debouncedQ ? "Sin resultados" : "Sin personas registradas"}
+            </p>
+          </div>
+        )}
+        {personas.map(p => {
+          const etapaInfo = p.ultima_etapa
+            ? ETAPAS_PIPELINE[p.ultima_etapa as keyof typeof ETAPAS_PIPELINE]
+            : null
+          return (
+            <button key={p.ref_lead_id}
+              className="w-full text-left p-4 rounded-xl border transition-colors active:opacity-80"
+              style={{ borderColor: "var(--border)", background: "var(--surface)" }}
+              onClick={() => setSelectedId(p.ref_lead_id)}>
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <p className="text-sm font-semibold leading-snug" style={{ color: "var(--text)" }}>
+                  {p.nombre} {p.apellido_paterno ?? ""} {p.apellido_materno ?? ""}
+                </p>
+                <span className="text-xs font-bold shrink-0 px-2 py-0.5 rounded-full"
+                  style={{ background: "var(--accent-bg)", color: "var(--accent)" }}>
+                  {p.leads_count} lead{p.leads_count !== 1 ? "s" : ""}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                {p.telefono && <span className="text-xs font-mono" style={{ color: "var(--muted)" }}>{p.telefono}</span>}
+                {p.estado_ciudad && <span className="text-xs" style={{ color: "var(--subtle)" }}>{p.estado_ciudad}</span>}
+              </div>
+              <div className="flex items-center justify-between mt-2">
+                {etapaInfo
+                  ? <Badge label={etapaInfo.label} color={etapaInfo.color} bg={etapaInfo.bg} size="sm" />
+                  : <span />}
+                <span className="text-xs tabular-nums" style={{ color: "var(--subtle)" }}>
+                  {formatDate(p.fecha_ultimo_lead)}
+                </span>
+              </div>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* ── Vista tablet/desktop: tabla ── */}
+      <div className="hidden sm:block rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)" }}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -312,40 +360,27 @@ export default function PersonasPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-xs tabular-nums font-mono" style={{ color: "var(--muted)" }}>
-                        {p.telefono ?? "—"}
-                      </span>
+                      <span className="text-xs tabular-nums font-mono" style={{ color: "var(--muted)" }}>{p.telefono ?? "—"}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-xs" style={{ color: "var(--muted)" }}>
-                        {p.email ?? "—"}
-                      </span>
+                      <span className="text-xs" style={{ color: "var(--muted)" }}>{p.email ?? "—"}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="font-mono text-xs" style={{ color: "var(--subtle)" }}>
-                        {p.curp ?? "—"}
-                      </span>
+                      <span className="font-mono text-xs" style={{ color: "var(--subtle)" }}>{p.curp ?? "—"}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-xs" style={{ color: "var(--subtle)" }}>
-                        {p.estado_ciudad ?? "—"}
-                      </span>
+                      <span className="text-xs" style={{ color: "var(--subtle)" }}>{p.estado_ciudad ?? "—"}</span>
                     </td>
                     <td className="px-4 py-3">
                       {etapaInfo
                         ? <Badge label={etapaInfo.label} color={etapaInfo.color} bg={etapaInfo.bg} size="sm" />
-                        : <span className="text-xs" style={{ color: "var(--subtle)" }}>—</span>
-                      }
+                        : <span className="text-xs" style={{ color: "var(--subtle)" }}>—</span>}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-xs font-bold tabular-nums" style={{ color: "var(--accent)" }}>
-                        {p.leads_count}
-                      </span>
+                      <span className="text-xs font-bold tabular-nums" style={{ color: "var(--accent)" }}>{p.leads_count}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-xs tabular-nums" style={{ color: "var(--subtle)" }}>
-                        {formatDate(p.fecha_ultimo_lead)}
-                      </span>
+                      <span className="text-xs tabular-nums" style={{ color: "var(--subtle)" }}>{formatDate(p.fecha_ultimo_lead)}</span>
                     </td>
                   </tr>
                 )

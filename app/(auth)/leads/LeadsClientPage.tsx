@@ -220,6 +220,7 @@ export default function LeadsClientPage({ rol, userId }: { rol: string; userId: 
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<Stats | null>(null)
   const [statsLoading, setStatsLoading] = useState(true)
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   // Filters
   const [q, setQ] = useState("")
@@ -287,17 +288,30 @@ export default function LeadsClientPage({ rol, userId }: { rol: string; userId: 
   const selectStyle = { background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold" style={{ color: "var(--text)" }}>Pipeline GMM</h1>
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-base sm:text-lg font-semibold" style={{ color: "var(--text)" }}>Pipeline GMM</h1>
           <p className="text-xs mt-0.5" style={{ color: "var(--subtle)" }}>
             {total.toLocaleString()} leads
             {hasFilters && <span className="ml-1 font-medium" style={{ color: "var(--accent)" }}>· filtros activos</span>}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Filter toggle — mobile only */}
+          <button
+            onClick={() => setFiltersOpen(v => !v)}
+            className="sm:hidden flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs border transition-colors"
+            style={{
+              background: hasFilters ? "var(--accent-bg)" : "var(--surface)",
+              borderColor: hasFilters ? "var(--accent)" : "var(--border)",
+              color: hasFilters ? "var(--accent)" : "var(--muted)",
+            }}
+          >
+            <Search size={12} />
+            Filtros{hasFilters ? " ●" : ""}
+          </button>
           <button
             onClick={fetchAll}
             className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors hover:bg-[var(--surface-2)]"
@@ -306,7 +320,7 @@ export default function LeadsClientPage({ rol, userId }: { rol: string; userId: 
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
           </button>
           <Link href="/leads/nuevo">
-            <Button size="sm"><Plus size={13} />Nuevo lead</Button>
+            <Button size="sm"><Plus size={13} /><span className="hidden sm:inline">Nuevo lead</span><span className="sm:hidden">Nuevo</span></Button>
           </Link>
         </div>
       </div>
@@ -318,22 +332,22 @@ export default function LeadsClientPage({ rol, userId }: { rol: string; userId: 
       {colaRevision.length > 0 && (
         <div className="flex items-center gap-3 p-3 rounded-xl border"
           style={{ background: "#FFFBEB", borderColor: "#FCD34D" }}>
-          <AlertCircle size={15} color="#D97706" />
+          <AlertCircle size={15} color="#D97706" className="shrink-0" />
           <span className="text-xs font-medium" style={{ color: "#92400E" }}>
             {colaRevision.length} lead{colaRevision.length > 1 ? "s" : ""} de WhatsApp esperando revisión
           </span>
-          <button className="ml-auto text-xs font-semibold underline" style={{ color: "#92400E" }}
+          <button className="ml-auto text-xs font-semibold underline shrink-0" style={{ color: "#92400E" }}
             onClick={() => setEtapa("nuevo")}>
             Ver cola
           </button>
         </div>
       )}
 
-      {/* Filtros */}
-      <div className="space-y-2">
+      {/* Filtros — siempre visibles en sm+, colapsables en móvil */}
+      <div className={`space-y-2 ${filtersOpen ? "block" : "hidden sm:block"}`}>
         {/* Fila 1: búsqueda + etapa + canal */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-48">
+          <div className="relative flex-1 min-w-40">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--subtle)" }} />
             <input
               value={q}
@@ -357,54 +371,99 @@ export default function LeadsClientPage({ rol, userId }: { rol: string; userId: 
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1.5">
             <span className="text-xs" style={{ color: "var(--subtle)" }}>Del</span>
-            <input
-              type="date"
-              value={fechaDesde}
-              onChange={(e) => setFechaDesde(e.target.value)}
-              className={selectCls}
-              style={selectStyle}
-            />
+            <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)}
+              className={selectCls} style={selectStyle} />
           </div>
           <div className="flex items-center gap-1.5">
             <span className="text-xs" style={{ color: "var(--subtle)" }}>al</span>
-            <input
-              type="date"
-              value={fechaHasta}
-              onChange={(e) => setFechaHasta(e.target.value)}
-              className={selectCls}
-              style={selectStyle}
-            />
+            <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)}
+              className={selectCls} style={selectStyle} />
           </div>
 
           <button
             onClick={() => setConMedicoRed(!conMedicoRed)}
             className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs border transition-colors"
             style={{
-              background:   conMedicoRed ? "#ECFDF5" : "var(--surface)",
-              borderColor:  conMedicoRed ? "#059669" : "var(--border)",
-              color:        conMedicoRed ? "#065F46" : "var(--muted)",
-              fontWeight:   conMedicoRed ? 600 : 400,
+              background:  conMedicoRed ? "#ECFDF5" : "var(--surface)",
+              borderColor: conMedicoRed ? "#059669" : "var(--border)",
+              color:       conMedicoRed ? "#065F46" : "var(--muted)",
+              fontWeight:  conMedicoRed ? 600 : 400,
             }}
           >
             <Stethoscope size={12} />
-            Médico de la red
+            Médico red
           </button>
 
           {hasFilters && (
             <button
-              onClick={clearFilters}
+              onClick={() => { clearFilters(); setFiltersOpen(false) }}
               className="flex items-center gap-1 h-8 px-3 rounded-lg text-xs border transition-colors hover:bg-[var(--surface-2)]"
               style={{ borderColor: "var(--border)", color: "var(--subtle)" }}
             >
               <X size={11} />
-              Limpiar filtros
+              Limpiar
             </button>
           )}
         </div>
       </div>
 
-      {/* Tabla */}
-      <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)" }}>
+      {/* ── Vista móvil: tarjetas ── */}
+      <div className="sm:hidden space-y-2">
+        {loading && (
+          <div className="text-center py-10 text-xs" style={{ color: "var(--subtle)" }}>Cargando...</div>
+        )}
+        {!loading && leads.length === 0 && (
+          <div className="flex flex-col items-center py-14 gap-2">
+            <Inbox size={28} style={{ color: "var(--border)" }} />
+            <p className="text-xs" style={{ color: "var(--subtle)" }}>
+              {hasFilters ? "Sin resultados con los filtros actuales" : "Sin leads"}
+            </p>
+          </div>
+        )}
+        {leads.map((lead) => {
+          const etapaInfo = ETAPAS_PIPELINE[lead.etapa as keyof typeof ETAPAS_PIPELINE]
+          return (
+            <Link key={lead.id} href={`/leads/${lead.id}`}
+              className="block p-4 rounded-xl border transition-colors active:opacity-80"
+              style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="flex items-center gap-1.5">
+                  {lead.en_cola_revision && <Clock size={11} color="#D97706" />}
+                  <span className="font-mono text-xs font-semibold" style={{ color: "var(--accent)" }}>{lead.folio}</span>
+                </div>
+                {etapaInfo && <Badge label={etapaInfo.label} color={etapaInfo.color} bg={etapaInfo.bg} size="sm" />}
+              </div>
+              <p className="text-sm font-semibold leading-snug" style={{ color: "var(--text)" }}>
+                {lead.nombre} {lead.apellido_paterno ?? ""} {lead.apellido_materno ?? ""}
+              </p>
+              {lead.procedimiento && (
+                <p className="text-xs mt-0.5 line-clamp-1" style={{ color: "var(--muted)" }}>{lead.procedimiento}</p>
+              )}
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                {lead.aseguradoras && (
+                  <span className="text-xs font-medium" style={{ color: "var(--muted)" }}>{lead.aseguradoras.nombre}</span>
+                )}
+                {lead.aseguradoras && <span style={{ color: "var(--border)" }}>·</span>}
+                <span className="text-xs" style={{ color: "var(--subtle)" }}>
+                  {FUENTES[lead.fuente ?? ""] ?? lead.fuente ?? "—"}
+                </span>
+                <span style={{ color: "var(--border)" }}>·</span>
+                <span className="text-xs tabular-nums" style={{ color: "var(--subtle)" }}>
+                  {formatDate(lead.fecha_captura)}
+                </span>
+              </div>
+            </Link>
+          )
+        })}
+        {!loading && leads.length > 0 && (
+          <p className="text-center text-xs py-2" style={{ color: "var(--subtle)" }}>
+            {leads.length} de {total.toLocaleString()} leads
+          </p>
+        )}
+      </div>
+
+      {/* ── Vista tablet/desktop: tabla ── */}
+      <div className="hidden sm:block rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)" }}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -420,9 +479,7 @@ export default function LeadsClientPage({ rol, userId }: { rol: string; userId: 
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-xs" style={{ color: "var(--subtle)" }}>
-                    Cargando...
-                  </td>
+                  <td colSpan={8} className="text-center py-12 text-xs" style={{ color: "var(--subtle)" }}>Cargando...</td>
                 </tr>
               )}
               {!loading && leads.length === 0 && (
@@ -443,72 +500,46 @@ export default function LeadsClientPage({ rol, userId }: { rol: string; userId: 
                   <tr key={lead.id}
                     className="border-t hover:bg-[var(--surface-2)] transition-colors"
                     style={{ borderColor: "var(--border)" }}>
-
-                    {/* Folio */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
                         {lead.en_cola_revision && <Clock size={11} color="#D97706" />}
-                        <span className="font-mono text-xs font-semibold" style={{ color: "var(--accent)" }}>
-                          {lead.folio}
-                        </span>
+                        <span className="font-mono text-xs font-semibold" style={{ color: "var(--accent)" }}>{lead.folio}</span>
                       </div>
                     </td>
-
-                    {/* Paciente */}
                     <td className="px-4 py-3">
                       <span className="font-medium text-xs" style={{ color: "var(--text)" }}>
                         {lead.nombre} {lead.apellido_paterno ?? ""} {lead.apellido_materno ?? ""}
                       </span>
                       {lead.vendedores && (
-                        <div className="text-xs mt-0.5" style={{ color: "var(--subtle)" }}>
-                          Ref: {lead.vendedores.codigo_unico}
-                        </div>
+                        <div className="text-xs mt-0.5" style={{ color: "var(--subtle)" }}>Ref: {lead.vendedores.codigo_unico}</div>
                       )}
                     </td>
-
-                    {/* Procedimiento */}
                     <td className="px-4 py-3 max-w-[160px]">
-                      <span className="text-xs" style={{ color: "var(--muted)" }}>
-                        {lead.procedimiento
-                          ? <span className="line-clamp-2">{lead.procedimiento}</span>
-                          : <em style={{ color: "var(--subtle)" }}>Sin especificar</em>}
+                      <span className="text-xs line-clamp-2" style={{ color: "var(--muted)" }}>
+                        {lead.procedimiento ?? <em style={{ color: "var(--subtle)" }}>Sin especificar</em>}
                       </span>
                     </td>
-
-                    {/* Seguro */}
                     <td className="px-4 py-3">
                       {lead.aseguradoras
                         ? <span className="text-xs font-medium" style={{ color: "var(--text)" }}>{lead.aseguradoras.nombre}</span>
-                        : <span className="text-xs" style={{ color: "var(--subtle)" }}>—</span>
-                      }
+                        : <span className="text-xs" style={{ color: "var(--subtle)" }}>—</span>}
                     </td>
-
-                    {/* Etapa */}
                     <td className="px-4 py-3">
-                      {etapaInfo && (
-                        <Badge label={etapaInfo.label} color={etapaInfo.color} bg={etapaInfo.bg} size="sm" />
-                      )}
+                      {etapaInfo && <Badge label={etapaInfo.label} color={etapaInfo.color} bg={etapaInfo.bg} size="sm" />}
                     </td>
-
-                    {/* Canal */}
                     <td className="px-4 py-3">
                       <span className="text-xs" style={{ color: "var(--subtle)" }}>
                         {FUENTES[lead.fuente ?? ""] ?? lead.fuente ?? "—"}
                       </span>
                     </td>
-
-                    {/* Fecha */}
                     <td className="px-4 py-3">
                       <span className="text-xs tabular-nums" style={{ color: "var(--subtle)" }}>
                         {formatDate(lead.fecha_captura)}
                       </span>
                     </td>
-
-                    {/* Acción */}
                     <td className="px-4 py-3">
                       <Link href={`/leads/${lead.id}`}>
-                        <button className="text-xs font-medium transition-colors hover:underline"
-                          style={{ color: "var(--accent)" }}>
+                        <button className="text-xs font-medium transition-colors hover:underline" style={{ color: "var(--accent)" }}>
                           Ver
                         </button>
                       </Link>
@@ -519,14 +550,9 @@ export default function LeadsClientPage({ rol, userId }: { rol: string; userId: 
             </tbody>
           </table>
         </div>
-
-        {/* Footer con total */}
         {!loading && leads.length > 0 && (
           <div className="px-4 py-2.5 border-t text-xs" style={{ borderColor: "var(--border)", color: "var(--subtle)", background: "var(--surface-2)" }}>
             Mostrando {leads.length} de {total.toLocaleString()} leads
-            {total > leads.length && (
-              <span className="ml-1">· <button className="underline" style={{ color: "var(--accent)" }} onClick={() => {}}>Ver más</button></span>
-            )}
           </div>
         )}
       </div>

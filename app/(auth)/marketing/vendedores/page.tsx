@@ -370,17 +370,17 @@ export default function VendedoresPage() {
   const totalLeads = stats.reduce((s, v) => s + (v.total_leads ?? 0), 0)
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <div>
-          <h1 className="text-lg font-semibold" style={{ color: "var(--text)" }}>Vendedores</h1>
+          <h1 className="text-base sm:text-lg font-semibold" style={{ color: "var(--text)" }}>Vendedores</h1>
           <p className="text-xs mt-0.5" style={{ color: "var(--subtle)" }}>
-            {vendedores.length} registrados · programa de referidos GMM
+            {vendedores.length} registrados · GMM
           </p>
         </div>
         <Button size="sm" onClick={() => setModalOpen(true)}>
-          <Plus size={13} /> Nuevo vendedor
+          <Plus size={13} /><span className="hidden sm:inline">Nuevo vendedor</span><span className="sm:hidden">Nuevo</span>
         </Button>
       </div>
 
@@ -396,81 +396,110 @@ export default function VendedoresPage() {
 
       {/* ── LISTA ── */}
       {tab === "lista" && (
-        <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)" }}>
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border)" }}>
-                {["Vendedor", "Contacto", "Código", "Nivel", "Estado", "Acciones"].map(h => (
-                  <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide"
-                    style={{ color: "var(--subtle)" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading && <tr><td colSpan={6} className="text-center py-10 text-xs" style={{ color: "var(--subtle)" }}>Cargando...</td></tr>}
-              {!loading && vendedores.length === 0 && (
-                <tr><td colSpan={6} className="text-center py-12 text-xs" style={{ color: "var(--subtle)" }}>Sin vendedores</td></tr>
-              )}
-              {vendedores.map(v => (
-                <tr key={v.id} className="border-t hover:bg-[var(--surface-2)] transition-colors"
-                  style={{ borderColor: "var(--border)" }}>
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-xs" style={{ color: "var(--text)" }}>
+        <>
+          {/* Móvil: tarjetas */}
+          <div className="sm:hidden space-y-2">
+            {loading && <div className="text-center py-10 text-xs" style={{ color: "var(--subtle)" }}>Cargando...</div>}
+            {!loading && vendedores.length === 0 && (
+              <div className="text-center py-12 text-xs" style={{ color: "var(--subtle)" }}>Sin vendedores</div>
+            )}
+            {vendedores.map(v => (
+              <div key={v.id} className="p-4 rounded-xl border" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
                       {v.nombre} {v.apellido_paterno ?? ""} {v.apellido_materno ?? ""}
-                    </div>
-                    {v.banco && (
-                      <div className="text-xs flex items-center gap-1 mt-0.5" style={{ color: "var(--subtle)" }}>
-                        <CreditCard size={10} /> {v.banco} {v.clabe ? `··· ${v.clabe.slice(-4)}` : ""}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="text-xs" style={{ color: "var(--muted)" }}>{v.telefono ?? "—"}</div>
-                    <div className="text-xs" style={{ color: "var(--subtle)" }}>{v.email ?? "—"}</div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="font-mono text-xs font-semibold" style={{ color: "var(--accent)" }}>
-                      {v.codigo_unico}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    {v.niveles_comision
-                      ? <Badge label={`${v.niveles_comision.nombre} — $${v.niveles_comision.monto.toLocaleString("es-MX")}`}
-                          color="#059669" bg="#ECFDF5" size="sm" />
-                      : <span className="text-xs" style={{ color: "var(--subtle)" }}>Sin nivel</span>}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge
-                      label={v.activo ? "Activo" : "Inactivo"}
-                      color={v.activo ? "#059669" : "#6B7280"}
-                      bg={v.activo ? "#ECFDF5" : "#F9FAFB"}
-                      size="sm" />
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => copyLink(v)}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-[var(--surface-2)]"
-                        style={{ color: copied === v.id ? "var(--positive)" : "var(--muted)" }} title="Copiar enlace">
-                        {copied === v.id ? <Check size={12} /> : <Copy size={12} />}
-                      </button>
-                      <button onClick={() => setQrVendedor(v)}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-[var(--surface-2)]"
-                        style={{ color: "var(--muted)" }} title="Ver QR">
-                        <QrCode size={12} />
-                      </button>
-                      <button
-                        onClick={() => setEditVendedor(v)}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-[var(--surface-2)] text-xs font-medium"
-                        style={{ color: "var(--accent)" }} title="Editar">
-                        ✎
-                      </button>
-                    </div>
-                  </td>
+                    </p>
+                    <p className="font-mono text-xs mt-0.5 font-semibold" style={{ color: "var(--accent)" }}>{v.codigo_unico}</p>
+                  </div>
+                  <Badge label={v.activo ? "Activo" : "Inactivo"} color={v.activo ? "#059669" : "#6B7280"} bg={v.activo ? "#ECFDF5" : "#F9FAFB"} size="sm" />
+                </div>
+                {v.telefono && <p className="text-xs" style={{ color: "var(--muted)" }}>{v.telefono}</p>}
+                {v.niveles_comision && (
+                  <p className="text-xs mt-1" style={{ color: "var(--subtle)" }}>
+                    {v.niveles_comision.nombre} · ${v.niveles_comision.monto.toLocaleString("es-MX")} MXN
+                  </p>
+                )}
+                <div className="flex items-center gap-2 mt-3 pt-3 border-t" style={{ borderColor: "var(--border)" }}>
+                  <button onClick={() => copyLink(v)} className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-lg text-xs border transition-colors"
+                    style={{ borderColor: "var(--border)", color: copied === v.id ? "#059669" : "var(--muted)" }}>
+                    {copied === v.id ? <Check size={12} /> : <Copy size={12} />} Copiar link
+                  </button>
+                  <button onClick={() => setQrVendedor(v)} className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-lg text-xs border transition-colors"
+                    style={{ borderColor: "var(--border)", color: "var(--muted)" }}>
+                    <QrCode size={12} /> QR
+                  </button>
+                  <button onClick={() => setEditVendedor(v)} className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-lg text-xs border transition-colors"
+                    style={{ borderColor: "var(--border)", color: "var(--accent)" }}>
+                    ✎ Editar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Tablet/Desktop: tabla */}
+          <div className="hidden sm:block rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)" }}>
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border)" }}>
+                  {["Vendedor", "Contacto", "Código", "Nivel", "Estado", "Acciones"].map(h => (
+                    <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide"
+                      style={{ color: "var(--subtle)" }}>{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {loading && <tr><td colSpan={6} className="text-center py-10 text-xs" style={{ color: "var(--subtle)" }}>Cargando...</td></tr>}
+                {!loading && vendedores.length === 0 && (
+                  <tr><td colSpan={6} className="text-center py-12 text-xs" style={{ color: "var(--subtle)" }}>Sin vendedores</td></tr>
+                )}
+                {vendedores.map(v => (
+                  <tr key={v.id} className="border-t hover:bg-[var(--surface-2)] transition-colors"
+                    style={{ borderColor: "var(--border)" }}>
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-xs" style={{ color: "var(--text)" }}>
+                        {v.nombre} {v.apellido_paterno ?? ""} {v.apellido_materno ?? ""}
+                      </div>
+                      {v.banco && (
+                        <div className="text-xs flex items-center gap-1 mt-0.5" style={{ color: "var(--subtle)" }}>
+                          <CreditCard size={10} /> {v.banco} {v.clabe ? `··· ${v.clabe.slice(-4)}` : ""}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-xs" style={{ color: "var(--muted)" }}>{v.telefono ?? "—"}</div>
+                      <div className="text-xs" style={{ color: "var(--subtle)" }}>{v.email ?? "—"}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="font-mono text-xs font-semibold" style={{ color: "var(--accent)" }}>{v.codigo_unico}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {v.niveles_comision
+                        ? <Badge label={`${v.niveles_comision.nombre} — $${v.niveles_comision.monto.toLocaleString("es-MX")}`} color="#059669" bg="#ECFDF5" size="sm" />
+                        : <span className="text-xs" style={{ color: "var(--subtle)" }}>Sin nivel</span>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge label={v.activo ? "Activo" : "Inactivo"} color={v.activo ? "#059669" : "#6B7280"} bg={v.activo ? "#ECFDF5" : "#F9FAFB"} size="sm" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => copyLink(v)} className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-[var(--surface-2)]"
+                          style={{ color: copied === v.id ? "var(--positive)" : "var(--muted)" }} title="Copiar enlace">
+                          {copied === v.id ? <Check size={12} /> : <Copy size={12} />}
+                        </button>
+                        <button onClick={() => setQrVendedor(v)} className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-[var(--surface-2)]"
+                          style={{ color: "var(--muted)" }} title="Ver QR"><QrCode size={12} /></button>
+                        <button onClick={() => setEditVendedor(v)} className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-[var(--surface-2)] text-xs font-medium"
+                          style={{ color: "var(--accent)" }} title="Editar">✎</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {/* ── ANALÍTICA ── */}
