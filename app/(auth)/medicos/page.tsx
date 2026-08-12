@@ -4,6 +4,7 @@ import { Plus, Stethoscope, Search, X, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Modal } from "@/components/ui/modal"
 import { Input, Select, Textarea } from "@/components/ui/input"
+import { GEO_ESTADOS } from "@/constants/geo-mx"
 
 interface Medico {
   id: number
@@ -179,26 +180,21 @@ export default function MedicosPage() {
           )}
         </div>
 
-        {/* Cobertura filter */}
-        <div className="relative min-w-[160px]">
-          <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-            style={{ color: "var(--muted)" }} />
-          <input
-            type="text"
-            placeholder="Cobertura..."
+        {/* Estado filter */}
+        <div className="relative min-w-[180px]">
+          <select
             value={filterCob}
             onChange={(e) => setFilterCob(e.target.value)}
-            className="w-full h-9 pl-8 pr-3 rounded-lg border text-sm outline-none"
+            className="w-full h-9 pl-3 pr-8 rounded-lg border text-sm outline-none appearance-none"
             style={{
-              background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)",
+              background: "var(--surface)", borderColor: "var(--border)", color: filterCob ? "var(--text)" : "var(--muted)",
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+              backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center", backgroundSize: "14px",
             }}
-          />
-          {filterCob && (
-            <button onClick={() => setFilterCob("")} className="absolute right-2 top-1/2 -translate-y-1/2"
-              style={{ color: "var(--muted)" }}>
-              <X size={12} />
-            </button>
-          )}
+          >
+            <option value="">Todos los estados</option>
+            {GEO_ESTADOS.map((e) => <option key={e} value={e}>{e}</option>)}
+          </select>
         </div>
 
         {/* Clear filters */}
@@ -269,7 +265,7 @@ export default function MedicosPage() {
                   <span className="text-xs" style={{ color: "var(--subtle)" }}>Cédula: {m.cedula}</span>
                 )}
                 {m.cobertura && (
-                  <span className="text-xs" style={{ color: "var(--subtle)" }}>Cobertura: {m.cobertura}</span>
+                  <span className="text-xs" style={{ color: "var(--subtle)" }}>Estado: {m.cobertura}</span>
                 )}
               </div>
             )}
@@ -319,7 +315,10 @@ export default function MedicosPage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Input label="Cédula profesional" value={form.cedula} onChange={set("cedula")} />
-            <Input label="Cobertura" value={form.cobertura} onChange={set("cobertura")} />
+            <Select label="Estado de cobertura" value={form.cobertura} onChange={set("cobertura")}>
+              <option value="">Seleccionar estado</option>
+              {GEO_ESTADOS.map((e) => <option key={e} value={e}>{e}</option>)}
+            </Select>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Input label="Teléfono" value={form.telefono} onChange={set("telefono")} />
