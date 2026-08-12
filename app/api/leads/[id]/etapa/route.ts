@@ -4,8 +4,13 @@ import { logAudit } from "@/lib/audit"
 import { assertLicense } from "@/lib/license"
 
 const ETAPAS_VALIDAS = [
-  "nuevo","contactado","necesidad_identificada","seguro_identificado",
-  "en_validacion","viable","programado","ganado","no_viable","perdido",
+  "nuevo", "contactado", "necesidad_identificada", "seguro_identificado",
+  "viable", "programado", "ganado", "no_viable", "perdido",
+]
+
+// Etapas activas (no cierre) desde las que se puede avanzar manualmente
+const ETAPAS_ACTIVAS = [
+  "nuevo", "contactado", "necesidad_identificada", "seguro_identificado", "viable", "programado",
 ]
 
 type Params = { params: Promise<{ id: string }> }
@@ -26,16 +31,40 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const svc = await createServiceClient()
 
-  // Get current lead state
-  const { data: lead } = await svc.from("leads").select("etapa, estado").eq("id", id).single()
+  // Obtener estado actual del lead
+  const { data: lead } = await svc
+    .from("leads")
+    .select("etapa, estado, carta_autorizacion_url, numero_autorizacion, fecha_tentativa")
+    .eq("id", id)
+    .single()
   if (!lead) return NextResponse.json({ error: "Lead no encontrado" }, { status: 404 })
 
+  // Validación especial para "programado": requiere carta o número de autorización
+  if (etapa === "programado") {
+    const tieneCarta = !!lead.carta_autorizacion_url
+    const tieneNumeroAuth = !!lead.numero_autorizacion
+    if (!tieneCarta && !tieneNumeroAuth) {
+      return NextResponse.json({
+        error: "Para marcar como Programado se requiere la carta de autorización (subida en pestaña Seguro) o el número de autorización capturado.",
+        code: "REQUIERE_CARTA",
+      }, { status: 422 })
+    }
+  }
+
+  // Validación: viable y programado solo desde etapas activas
+  if (["viable", "programado"].includes(etapa) && !ETAPAS_ACTIVAS.includes(lead.etapa)) {
+    return NextResponse.json({
+      error: "No se puede cambiar a esta etapa desde el estado actual del lead.",
+    }, { status: 422 })
+  }
+
   const updates: Record<string, unknown> = { etapa }
+
   if (["ganado", "perdido", "no_viable"].includes(etapa)) {
     updates.estado = etapa === "ganado" ? "convertido" : "perdido"
     if (etapa === "ganado") updates.fecha_conversion = new Date().toISOString()
   }
-  if (etapa === "contactado" && !lead.etapa.includes("contactado")) {
+  if (etapa === "contactado" && lead.etapa === "nuevo") {
     updates.fecha_contacto = new Date().toISOString()
   }
   if (notas) updates.notas = notas

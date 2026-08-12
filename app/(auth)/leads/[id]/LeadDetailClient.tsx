@@ -207,6 +207,7 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
   const [changingEtapa, setChangingEtapa] = useState(false)
   const [form, setForm] = useState<Partial<Lead>>({})
   const [saveMsg, setSaveMsg] = useState("")
+  const [etapaError, setEtapaError] = useState("")
   // Upload link
   const [uploadLink, setUploadLink] = useState<string | null>(null)
   const [uploadExpiry, setUploadExpiry] = useState<string | null>(null)
@@ -328,6 +329,7 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
 
   async function changeEtapa(etapa: string) {
     setChangingEtapa(true)
+    setEtapaError("")
     const res = await fetch(`/api/leads/${leadId}/etapa`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -337,6 +339,10 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
       const { data } = await res.json()
       setLead(data)
       setForm((f) => ({ ...f, etapa: data.etapa, estado: data.estado }))
+    } else {
+      const json = await res.json()
+      setEtapaError(json.error ?? "Error al cambiar la etapa")
+      setTimeout(() => setEtapaError(""), 6000)
     }
     setChangingEtapa(false)
   }
@@ -423,6 +429,13 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
               </div>
             )
           })}
+          {/* Indicador de decisión manual desde seguro_identificado */}
+          {(lead.etapa === "seguro_identificado" || lead.etapa === "contactado" || lead.etapa === "necesidad_identificada") && canEdit && (
+            <div className="ml-auto flex items-center gap-1.5 text-xs" style={{ color: "var(--subtle)" }}>
+              <span>→ decide:</span>
+            </div>
+          )}
+
           <div className="ml-2 flex gap-1">
             {ETAPAS_CIERRE.map((key) => {
               const info = ETAPAS_PIPELINE[key]
@@ -446,6 +459,62 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
           </div>
         </div>
       </div>
+
+      {/* ── Error de cambio de etapa ───────────────────────────── */}
+      {etapaError && (
+        <div className="px-4 py-3 rounded-xl text-xs font-medium"
+          style={{ background: "#FEF2F2", color: "#DC2626", border: "1px solid #FECACA" }}>
+          ⚠️ {etapaError}
+        </div>
+      )}
+
+      {/* ── Panel de Gestoría (visible cuando etapa = viable) ──── */}
+      {lead.etapa === "viable" && (
+        <div className="rounded-xl border p-4 space-y-3"
+          style={{ background: "#F0FDF4", borderColor: "#86EFAC" }}>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#065F46" }}>
+              Gestoría en progreso
+            </span>
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium ml-auto"
+              style={{ background: "#DCFCE7", color: "#15803D" }}>
+              Viable ✓
+            </span>
+          </div>
+          <p className="text-xs" style={{ color: "#166534" }}>
+            Completa los siguientes requisitos para poder marcar el lead como <strong>Programado</strong>.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: "Carta de autorización subida",   ok: !!lead.carta_autorizacion_url,   tab: "seguro" },
+              { label: "Número de autorización",         ok: !!lead.numero_autorizacion,       tab: "seguro" },
+              { label: "Médico asignado",                ok: !!lead.medico_asignado_nombre,    tab: "medico" },
+              { label: "Fecha tentativa de procedimiento", ok: !!lead.fecha_tentativa,          tab: "necesidad" },
+            ].map(({ label, ok, tab: t }) => (
+              <button key={label} onClick={() => !ok && setTab(t)}
+                className="flex items-center gap-2 text-xs text-left px-3 py-2 rounded-lg transition-colors"
+                style={{
+                  background: ok ? "#DCFCE7" : "#fff",
+                  border: `1px solid ${ok ? "#86EFAC" : "#D1FAE5"}`,
+                  color: ok ? "#15803D" : "#166534",
+                  cursor: ok ? "default" : "pointer",
+                }}>
+                <span className="text-sm flex-shrink-0">{ok ? "✓" : "○"}</span>
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+          {lead.carta_autorizacion_url || lead.numero_autorizacion ? (
+            <p className="text-xs font-medium" style={{ color: "#059669" }}>
+              ✓ Requisito mínimo cumplido — puedes marcar como Programado en el stepper de arriba.
+            </p>
+          ) : (
+            <p className="text-xs" style={{ color: "#6B7280" }}>
+              Se requiere al menos la carta de autorización o el número de autorización para programar.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* ── Tabs + formulario ──────────────────────────────────── */}
       <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
