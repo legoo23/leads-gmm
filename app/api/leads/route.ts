@@ -18,13 +18,17 @@ export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams
   const limit = sanitizeLimit(sp.get("limit"), 25)
   const offset = parseInt(sp.get("offset") ?? "0")
-  const etapa = sp.get("etapa")
-  const rawSearch = sp.get("q")
-  const search = rawSearch ? rawSearch.replace(/,/g, "").trim() : null
+  const etapa        = sp.get("etapa")
+  const fuente       = sp.get("fuente")
+  const fechaDesde   = sp.get("fecha_desde")
+  const fechaHasta   = sp.get("fecha_hasta")
+  const conMedicoRed = sp.get("con_medico_red") === "true"
+  const rawSearch    = sp.get("q")
+  const search       = rawSearch ? rawSearch.replace(/,/g, "").trim() : null
 
   const svc = await createServiceClient()
 
-  // Main data query — no count here (joins make count slow)
+  // Main data query — no count (joins make count slow)
   let dataQuery = svc.from("leads")
     .select(`
       id, folio, nombre, apellido_paterno, apellido_materno,
@@ -37,21 +41,39 @@ export async function GET(req: NextRequest) {
     .order("fecha_captura", { ascending: false })
     .range(offset, offset + limit - 1)
 
-  // Count query — lightweight (no joins) runs in parallel
+  // Count query — lightweight (no joins), runs in parallel
   let countQuery = svc.from("leads").select("id", { count: "exact", head: true })
 
   // Apply shared filters to both queries
   if (etapa) {
-    dataQuery = dataQuery.eq("etapa", etapa)
+    dataQuery  = dataQuery.eq("etapa", etapa)
     countQuery = countQuery.eq("etapa", etapa)
   }
+  if (fuente) {
+    dataQuery  = dataQuery.eq("fuente", fuente)
+    countQuery = countQuery.eq("fuente", fuente)
+  }
+  if (fechaDesde) {
+    const d = new Date(fechaDesde + "T00:00:00").toISOString()
+    dataQuery  = dataQuery.gte("fecha_captura", d)
+    countQuery = countQuery.gte("fecha_captura", d)
+  }
+  if (fechaHasta) {
+    const d = new Date(fechaHasta + "T23:59:59").toISOString()
+    dataQuery  = dataQuery.lte("fecha_captura", d)
+    countQuery = countQuery.lte("fecha_captura", d)
+  }
+  if (conMedicoRed) {
+    dataQuery  = dataQuery.not("id_medico", "is", null)
+    countQuery = countQuery.not("id_medico", "is", null)
+  }
   if (rol === "agente") {
-    dataQuery = dataQuery.eq("id_agente", user.id)
+    dataQuery  = dataQuery.eq("id_agente", user.id)
     countQuery = countQuery.eq("id_agente", user.id)
   }
   if (search) {
     const filter = `nombre.ilike.*${search}*,apellido_paterno.ilike.*${search}*,folio.ilike.*${search}*`
-    dataQuery = dataQuery.or(filter)
+    dataQuery  = dataQuery.or(filter)
     countQuery = countQuery.or(filter)
   }
 
