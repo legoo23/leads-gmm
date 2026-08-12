@@ -179,7 +179,7 @@ function EspecialidadSelect({ value, onChange, disabled }: {
           onChange={(e) => onChange(e.target.value)}
           placeholder="Especificar especialidad"
           className="w-full h-9 px-3 rounded-lg border text-sm outline-none mt-1"
-          style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }}
+          style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)", textTransform: "uppercase" }}
         />
       )}
     </div>
@@ -469,9 +469,9 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
           {activeTab === "contacto" && (
             <>
               <div className="grid grid-cols-3 gap-4">
-                <Input label="Nombre *" value={form.nombre ?? ""} onChange={set("nombre")} readOnly={ro} />
-                <Input label="Apellido paterno *" value={form.apellido_paterno ?? ""} onChange={set("apellido_paterno")} readOnly={ro} />
-                <Input label="Apellido materno" value={form.apellido_materno ?? ""} onChange={set("apellido_materno")} readOnly={ro} />
+                <Input label="Nombre *" value={form.nombre ?? ""} onChange={set("nombre")} readOnly={ro} style={{ textTransform: "uppercase" }} />
+                <Input label="Apellido paterno *" value={form.apellido_paterno ?? ""} onChange={set("apellido_paterno")} readOnly={ro} style={{ textTransform: "uppercase" }} />
+                <Input label="Apellido materno" value={form.apellido_materno ?? ""} onChange={set("apellido_materno")} readOnly={ro} style={{ textTransform: "uppercase" }} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <Input label="Teléfono *" value={form.telefono ?? ""} onChange={set("telefono")} maxLength={20} readOnly={ro} />
@@ -483,7 +483,7 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <Input label="Fecha de nacimiento" type="date" value={form.fecha_nacimiento ?? ""} onChange={set("fecha_nacimiento")} readOnly={ro} />
-                <Input label="CURP" value={form.curp ?? ""} onChange={set("curp")} maxLength={18} className="uppercase" readOnly={ro} />
+                <Input label="CURP" value={form.curp ?? ""} onChange={set("curp")} maxLength={18} readOnly={ro} style={{ textTransform: "uppercase" }} />
                 <Select label="Estado / Ciudad" value={form.estado_ciudad ?? ""} onChange={set("estado_ciudad")} disabled={ro}>
                   <option value="">— Estado —</option>
                   {GEO_ESTADOS.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -501,7 +501,7 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                   <option value="">— Procedimiento —</option>
                   {PROCEDIMIENTOS.map((p) => <option key={p.codigo} value={p.nombre}>{p.nombre}</option>)}
                 </Select>
-                <Input label="Categoría quirúrgica" value={form.categoria_quirurgica ?? ""} onChange={set("categoria_quirurgica")} readOnly={ro} />
+                <Input label="Categoría quirúrgica" value={form.categoria_quirurgica ?? ""} onChange={set("categoria_quirurgica")} readOnly={ro} style={{ textTransform: "uppercase" }} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <Select label="Urgencia" value={form.urgencia ?? "electiva"} onChange={set("urgencia")} disabled={ro}>
@@ -509,21 +509,21 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                   <option value="programada">Programada</option>
                   <option value="urgente">Urgente</option>
                 </Select>
-                <Input label="Código CIE-9 / CPT" value={form.codigo_procedimiento ?? ""} onChange={set("codigo_procedimiento")} readOnly={ro} />
+                <Input label="Código CIE-9 / CPT" value={form.codigo_procedimiento ?? ""} onChange={set("codigo_procedimiento")} readOnly={ro} style={{ textTransform: "uppercase" }} />
               </div>
               <Input label="Fecha tentativa deseada" type="date" value={form.fecha_tentativa ?? ""} onChange={set("fecha_tentativa")} readOnly={ro} />
-              <Textarea label="Notas del procedimiento" value={form.notas_procedimiento ?? ""} onChange={set("notas_procedimiento")} rows={3} readOnly={ro} />
+              <Textarea label="Notas del procedimiento" value={form.notas_procedimiento ?? ""} onChange={set("notas_procedimiento")} rows={3} readOnly={ro} style={{ textTransform: "uppercase" }} />
 
               <SectionTitle>Padecimientos e Historia Clínica</SectionTitle>
               <div className="grid grid-cols-2 gap-4">
-                <Input label="Diagnóstico principal" value={form.diagnostico_principal ?? ""} onChange={set("diagnostico_principal")} placeholder="ej: Colelitiasis, Hernia inguinal" readOnly={ro} />
-                <Input label="Diagnósticos secundarios / comorbilidades" value={form.diagnosticos_secundarios ?? ""} onChange={set("diagnosticos_secundarios")} placeholder="Separados por coma" readOnly={ro} />
+                <Input label="Diagnóstico principal" value={form.diagnostico_principal ?? ""} onChange={set("diagnostico_principal")} placeholder="ej: Colelitiasis, Hernia inguinal" readOnly={ro} style={{ textTransform: "uppercase" }} />
+                <Input label="Diagnósticos secundarios / comorbilidades" value={form.diagnosticos_secundarios ?? ""} onChange={set("diagnosticos_secundarios")} placeholder="Separados por coma" readOnly={ro} style={{ textTransform: "uppercase" }} />
               </div>
               <BoolField label="¿Cirugías previas?" value={form.cirugias_previas ?? null} onChange={setBool("cirugias_previas")} disabled={ro} />
               {form.cirugias_previas && (
-                <Input label="Descripción de cirugías previas" value={form.cirugias_previas_desc ?? ""} onChange={set("cirugias_previas_desc")} placeholder="Año, tipo de cirugía, hospital" readOnly={ro} />
+                <Input label="Descripción de cirugías previas" value={form.cirugias_previas_desc ?? ""} onChange={set("cirugias_previas_desc")} placeholder="Año, tipo de cirugía, hospital" readOnly={ro} style={{ textTransform: "uppercase" }} />
               )}
-              <Textarea label="Notas clínicas adicionales" value={form.notas_clinicas ?? ""} onChange={set("notas_clinicas")} rows={3} readOnly={ro} />
+              <Textarea label="Notas clínicas adicionales" value={form.notas_clinicas ?? ""} onChange={set("notas_clinicas")} rows={3} readOnly={ro} style={{ textTransform: "uppercase" }} />
             </>
           )}
 
@@ -562,7 +562,7 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                           onChange={(e) => { setMedicoQuery(e.target.value); searchMedicos(e.target.value) }}
                           placeholder="Nombre del médico..."
                           className="w-full h-9 pl-8 pr-8 rounded-lg border text-sm outline-none"
-                          style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }}
+                          style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)", textTransform: "uppercase" }}
                         />
                         {medicoSearching && (
                           <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -624,7 +624,7 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                         </div>
                       )}
                       <div className="grid grid-cols-2 gap-4">
-                        <Input label="Nombre completo" value={form.medico_asignado_nombre ?? ""} onChange={set("medico_asignado_nombre")} placeholder="Dr. / Dra." readOnly={ro} />
+                        <Input label="Nombre completo" value={form.medico_asignado_nombre ?? ""} onChange={set("medico_asignado_nombre")} placeholder="Dr. / Dra." readOnly={ro} style={{ textTransform: "uppercase" }} />
                         <EspecialidadSelect
                           value={form.medico_especialidad ?? ""}
                           onChange={(v) => setForm((f) => ({ ...f, medico_especialidad: v }))}
@@ -643,6 +643,7 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                         rows={2}
                         readOnly={ro}
                         placeholder="Nombre del hospital, ciudad — separar por coma o salto de línea"
+                        style={{ textTransform: "uppercase" }}
                       />
                     </div>
                   )}
@@ -677,7 +678,7 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                             onChange={(e) => { setMedicoQuery(e.target.value); searchMedicos(e.target.value, true) }}
                             placeholder="Buscar por nombre o especialidad..."
                             className="w-full h-9 pl-8 pr-3 rounded-lg border text-sm outline-none"
-                            style={{ background: "#fff", borderColor: "#C4B5FD", color: "var(--text)" }}
+                            style={{ background: "#fff", borderColor: "#C4B5FD", color: "var(--text)", textTransform: "uppercase" }}
                           />
                           {medicoSearching && (
                             <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -720,7 +721,7 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                         Médico de nuestra red asignado al lead
                       </div>
                       <div className="grid grid-cols-2 gap-4">
-                        <Input label="Nombre" value={form.medico_asignado_nombre ?? ""} onChange={set("medico_asignado_nombre")} readOnly={ro} />
+                        <Input label="Nombre" value={form.medico_asignado_nombre ?? ""} onChange={set("medico_asignado_nombre")} readOnly={ro} style={{ textTransform: "uppercase" }} />
                         <EspecialidadSelect
                           value={form.medico_especialidad ?? ""}
                           onChange={(v) => setForm((f) => ({ ...f, medico_especialidad: v }))}
@@ -731,7 +732,7 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                         <Input label="Teléfono" value={form.medico_telefono ?? ""} onChange={set("medico_telefono")} readOnly={ro} />
                         <Input label="Correo electrónico" type="email" value={form.medico_email ?? ""} onChange={set("medico_email")} readOnly={ro} />
                       </div>
-                      <Textarea label="Hospitales donde trabaja" value={form.medico_hospitales ?? ""} onChange={set("medico_hospitales")} rows={2} readOnly={ro} />
+                      <Textarea label="Hospitales donde trabaja" value={form.medico_hospitales ?? ""} onChange={set("medico_hospitales")} rows={2} readOnly={ro} style={{ textTransform: "uppercase" }} />
                     </div>
                   )}
                 </div>
@@ -756,10 +757,10 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                 </Select>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <Input label="Número de póliza *" value={form.numero_poliza ?? ""} onChange={set("numero_poliza")} readOnly={ro} />
-                <Input label="Número de certificado" value={form.numero_certificado ?? ""} onChange={set("numero_certificado")} readOnly={ro} />
+                <Input label="Número de póliza *" value={form.numero_poliza ?? ""} onChange={set("numero_poliza")} readOnly={ro} style={{ textTransform: "uppercase" }} />
+                <Input label="Número de certificado" value={form.numero_certificado ?? ""} onChange={set("numero_certificado")} readOnly={ro} style={{ textTransform: "uppercase" }} />
               </div>
-              <Input label="Nombre del titular de la póliza" value={form.nombre_titular_poliza ?? ""} onChange={set("nombre_titular_poliza")} readOnly={ro} />
+              <Input label="Nombre del titular de la póliza" value={form.nombre_titular_poliza ?? ""} onChange={set("nombre_titular_poliza")} readOnly={ro} style={{ textTransform: "uppercase" }} />
 
               <SectionTitle>Vigencia</SectionTitle>
               <div className="grid grid-cols-3 gap-4">
@@ -794,11 +795,11 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                 <BoolField label="¿Cubre hospitalización?" value={form.cubre_hospitalizacion ?? null} onChange={setBool("cubre_hospitalizacion")} disabled={ro} />
                 <BoolField label="¿El procedimiento es preexistencia?" value={form.es_preexistencia ?? null} onChange={setBool("es_preexistencia")} disabled={ro} />
               </div>
-              <Textarea label="Condiciones / diagnósticos excluidos" value={form.condiciones_excluidas ?? ""} onChange={set("condiciones_excluidas")} rows={2} readOnly={ro} placeholder="Separar por coma" />
+              <Textarea label="Condiciones / diagnósticos excluidos" value={form.condiciones_excluidas ?? ""} onChange={set("condiciones_excluidas")} rows={2} readOnly={ro} placeholder="Separar por coma" style={{ textTransform: "uppercase" }} />
 
               <SectionTitle>Autorización</SectionTitle>
               <div className="grid grid-cols-2 gap-4">
-                <Input label="Número de autorización" value={form.numero_autorizacion ?? ""} onChange={set("numero_autorizacion")} readOnly={ro} />
+                <Input label="Número de autorización" value={form.numero_autorizacion ?? ""} onChange={set("numero_autorizacion")} readOnly={ro} style={{ textTransform: "uppercase" }} />
                 <Input label="Fecha de autorización" type="date" value={form.fecha_autorizacion ?? ""} onChange={set("fecha_autorizacion")} readOnly={ro} />
               </div>
               {lead.carta_autorizacion_url && (
@@ -813,10 +814,10 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
 
               <SectionTitle>Contacto en Aseguradora</SectionTitle>
               <div className="grid grid-cols-2 gap-4">
-                <Input label="Nombre del contacto" value={form.contacto_aseguradora_nombre ?? ""} onChange={set("contacto_aseguradora_nombre")} readOnly={ro} />
+                <Input label="Nombre del contacto" value={form.contacto_aseguradora_nombre ?? ""} onChange={set("contacto_aseguradora_nombre")} readOnly={ro} style={{ textTransform: "uppercase" }} />
                 <Input label="Teléfono del contacto" value={form.contacto_aseguradora_telefono ?? ""} onChange={set("contacto_aseguradora_telefono")} readOnly={ro} />
               </div>
-              <Textarea label="Notas de la validación" value={form.notas_validacion ?? ""} onChange={set("notas_validacion")} rows={3} readOnly={ro} />
+              <Textarea label="Notas de la validación" value={form.notas_validacion ?? ""} onChange={set("notas_validacion")} rows={3} readOnly={ro} style={{ textTransform: "uppercase" }} />
             </>
           )}
 
@@ -1021,7 +1022,7 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
 
           {/* ── NOTAS ────────────────────────────────────────── */}
           {activeTab === "notas" && (
-            <Textarea label="Notas del expediente" value={form.notas ?? ""} onChange={set("notas")} rows={8} readOnly={ro} />
+            <Textarea label="Notas del expediente" value={form.notas ?? ""} onChange={set("notas")} rows={8} readOnly={ro} style={{ textTransform: "uppercase" }} />
           )}
 
           {/* Botón guardar */}
