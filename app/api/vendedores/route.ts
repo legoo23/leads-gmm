@@ -3,6 +3,7 @@ import { createServiceClient, createClient } from "@/lib/supabase/server"
 import { logAudit } from "@/lib/audit"
 import { generateVendorCode, normalizePhone, normalizeEmail } from "@/lib/utils"
 import { assertLicense } from "@/lib/license"
+import { sendWelcomeVendedor } from "@/lib/email"
 
 const PREFIX = process.env.NEXT_PUBLIC_VENDOR_CODE_PREFIX ?? "GMM"
 
@@ -68,5 +69,19 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   await logAudit({ accion: "create_vendedor", tabla: "vendedores", id_registro: data.id, id_usuario: user.id })
+
+  // Enviar email de bienvenida — falla silenciosamente para no bloquear la creación
+  if (data.email) {
+    const nivel = data.niveles_comision as { nombre: string; monto: number } | null
+    sendWelcomeVendedor({
+      nombre:           data.nombre,
+      apellido_paterno: data.apellido_paterno,
+      email:            data.email,
+      codigo_unico:     data.codigo_unico,
+      nivel_nombre:     nivel?.nombre ?? null,
+      nivel_monto:      nivel?.monto  ?? null,
+    }).catch((e) => console.error("[email bienvenida]", e.message))
+  }
+
   return NextResponse.json({ data }, { status: 201 })
 }

@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react"
 import {
   Plus, QrCode, Copy, Check, ChevronDown, ChevronUp,
   TrendingUp, Users, DollarSign, Award, RefreshCw,
-  Phone, Mail, MapPin, Building2, CreditCard, X,
+  Phone, Mail, MapPin, Building2, CreditCard, X, Send,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Modal } from "@/components/ui/modal"
@@ -300,6 +300,8 @@ export default function VendedoresPage() {
   const [qrVendedor, setQrVendedor] = useState<Vendedor | null>(null)
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState<number | null>(null)
+  const [sending, setSending] = useState<number | null>(null)
+  const [sent, setSent] = useState<number | null>(null)
   const [fechaDesde, setFechaDesde] = useState("")
   const [fechaHasta, setFechaHasta] = useState("")
 
@@ -360,6 +362,15 @@ export default function VendedoresPage() {
   function copyLink(v: Vendedor) {
     navigator.clipboard.writeText(`${APP_URL}/r/${v.codigo_unico}`)
     setCopied(v.id); setTimeout(() => setCopied(null), 1500)
+  }
+
+  async function sendWelcome(v: Vendedor) {
+    if (!v.email) { alert("Este vendedor no tiene email registrado."); return }
+    setSending(v.id)
+    const res = await fetch(`/api/vendedores/${v.id}/enviar-bienvenida`, { method: "POST" })
+    setSending(null)
+    if (res.ok) { setSent(v.id); setTimeout(() => setSent(null), 3000) }
+    else { const j = await res.json(); alert(j.error ?? "Error al enviar") }
   }
 
   const tabCls = (t: typeof tab) =>
@@ -429,6 +440,12 @@ export default function VendedoresPage() {
                     style={{ borderColor: "var(--border)", color: "var(--muted)" }}>
                     <QrCode size={12} /> QR
                   </button>
+                  <button onClick={() => sendWelcome(v)} disabled={sending === v.id}
+                    className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-lg text-xs border transition-colors"
+                    style={{ borderColor: "var(--border)", color: sent === v.id ? "#059669" : "var(--muted)" }}>
+                    {sent === v.id ? <Check size={12} /> : <Send size={12} className={sending === v.id ? "animate-pulse" : ""} />}
+                    {sent === v.id ? "Enviado" : "Email"}
+                  </button>
                   <button onClick={() => setEditVendedor(v)} className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-lg text-xs border transition-colors"
                     style={{ borderColor: "var(--border)", color: "var(--accent)" }}>
                     ✎ Editar
@@ -490,6 +507,12 @@ export default function VendedoresPage() {
                         </button>
                         <button onClick={() => setQrVendedor(v)} className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-[var(--surface-2)]"
                           style={{ color: "var(--muted)" }} title="Ver QR"><QrCode size={12} /></button>
+                        <button onClick={() => sendWelcome(v)} disabled={sending === v.id}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-[var(--surface-2)]"
+                          style={{ color: sent === v.id ? "var(--positive)" : "var(--muted)" }}
+                          title={v.email ? "Enviar email de bienvenida" : "Sin email registrado"}>
+                          {sent === v.id ? <Check size={12} /> : <Send size={12} className={sending === v.id ? "animate-pulse" : ""} />}
+                        </button>
                         <button onClick={() => setEditVendedor(v)} className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-[var(--surface-2)] text-xs font-medium"
                           style={{ color: "var(--accent)" }} title="Editar">✎</button>
                       </div>
