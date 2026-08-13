@@ -4,6 +4,7 @@ import Link from "next/link"
 import {
   ArrowLeft, Save, ChevronRight, User, Activity,
   Stethoscope, Shield, Tag, Link2, Copy, Check, Hospital, FileText, UserCheck, Search,
+  Plus, Trash2, ChevronDown, ChevronUp,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input, Select, Textarea } from "@/components/ui/input"
@@ -38,7 +39,7 @@ interface Lead {
   // Procedimiento
   procedimiento: string | null; categoria_quirurgica: string | null
   codigo_procedimiento: string | null; urgencia: string | null; costo_estimado: number | null
-  fecha_tentativa: string | null; estancia_estimada_dias: number | null
+  fecha_tentativa: string | null; fecha_diagnostico: string | null; estancia_estimada_dias: number | null
   notas_procedimiento: string | null
   // Póliza GMM
   id_aseguradora: number | null; tipo_plan: string | null; numero_poliza: string | null
@@ -186,6 +187,36 @@ function EspecialidadSelect({ value, onChange, disabled }: {
   )
 }
 
+/* ─── Póliza excedente ───────────────────────────────────────────── */
+interface PolizaExcedente {
+  id?: number
+  aseguradora_nombre: string
+  tipo_plan: string
+  numero_poliza: string
+  numero_certificado: string
+  nombre_titular: string
+  vigencia_inicio: string
+  vigencia_fin: string
+  suma_asegurada: string
+  moneda: string
+  deducible: string
+  coaseguro_pct: string
+  tope_coaseguro: string
+  periodo_espera_activo: boolean | null
+  notas: string
+  _expanded: boolean
+  _saving: boolean
+}
+
+function emptyPoliza(): PolizaExcedente {
+  return {
+    aseguradora_nombre: "", tipo_plan: "", numero_poliza: "", numero_certificado: "",
+    nombre_titular: "", vigencia_inicio: "", vigencia_fin: "",
+    suma_asegurada: "", moneda: "MXN", deducible: "", coaseguro_pct: "", tope_coaseguro: "",
+    periodo_espera_activo: null, notas: "", _expanded: true, _saving: false,
+  }
+}
+
 /* ─── Tipo resultado búsqueda médicos ────────────────────────────── */
 interface MedicoResult {
   id: number
@@ -215,6 +246,9 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
   const [linkCopied, setLinkCopied] = useState(false)
   const [docsSeleccionados, setDocsSeleccionados] = useState<string[]>(["poliza", "ine"])
 
+  // Pólizas excedentes
+  const [polizasExcedentes, setPolizasExcedentes] = useState<PolizaExcedente[]>([])
+
   // Búsqueda de médicos
   const [medicoQuery, setMedicoQuery] = useState("")
   const [medicoFiltroEstado, setMedicoFiltroEstado] = useState("")
@@ -228,15 +262,41 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
     if (data) { setLead(data); setForm(data) }
   }, [leadId])
 
+  const loadPolizasExcedentes = useCallback(async () => {
+    const res = await fetch(`/api/leads/${leadId}/polizas-excedentes`)
+    const { data } = await res.json()
+    if (Array.isArray(data)) {
+      setPolizasExcedentes(data.map((p: Record<string, unknown>) => ({
+        id: p.id as number,
+        aseguradora_nombre: String(p.aseguradora_nombre ?? ""),
+        tipo_plan: String(p.tipo_plan ?? ""),
+        numero_poliza: String(p.numero_poliza ?? ""),
+        numero_certificado: String(p.numero_certificado ?? ""),
+        nombre_titular: String(p.nombre_titular ?? ""),
+        vigencia_inicio: String(p.vigencia_inicio ?? ""),
+        vigencia_fin: String(p.vigencia_fin ?? ""),
+        suma_asegurada: p.suma_asegurada != null ? String(p.suma_asegurada) : "",
+        moneda: String(p.moneda ?? "MXN"),
+        deducible: p.deducible != null ? String(p.deducible) : "",
+        coaseguro_pct: p.coaseguro_pct != null ? String(p.coaseguro_pct) : "",
+        tope_coaseguro: p.tope_coaseguro != null ? String(p.tope_coaseguro) : "",
+        periodo_espera_activo: (p.periodo_espera_activo as boolean | null) ?? null,
+        notas: String(p.notas ?? ""),
+        _expanded: false,
+        _saving: false,
+      })))
+    }
+  }, [leadId])
+
   useEffect(() => {
-    loadLead().finally(() => setLoading(false))
+    Promise.all([loadLead(), loadPolizasExcedentes()]).finally(() => setLoading(false))
     fetch(`/api/leads/${leadId}/upload-token`)
       .then((r) => r.json())
       .then(({ data }) => {
         if (data) { setUploadLink(data.link ?? null); setUploadExpiry(data.expires_at ?? null) }
       })
       .catch(() => {})
-  }, [leadId, loadLead])
+  }, [leadId, loadLead, loadPolizasExcedentes])
 
   const generateUploadLink = useCallback(async () => {
     setGeneratingLink(true)
@@ -299,6 +359,43 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
     setMedicoResults([])
     setShowManualEntry(false)
   }, [])
+
+  function updatePoliza(idx: number, field: keyof PolizaExcedente, value: unknown) {
+    setPolizasExcedentes((prev) => prev.map((p, i) => i === idx ? { ...p, [field]: value } : p))
+  }
+
+  async function savePoliza(idx: number) {
+    const p = polizasExcedentes[idx]
+    setPolizasExcedentes((prev) => prev.map((x, i) => i === idx ? { ...x, _saving: true } : x))
+    const method = p.id ? "PATCH" : "POST"
+    const url = p.id
+      ? `/api/leads/${leadId}/polizas-excedentes/${p.id}`
+      : `/api/leads/${leadId}/polizas-excedentes`
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(p),
+    })
+    const { data } = await res.json()
+    if (data) {
+      setPolizasExcedentes((prev) => prev.map((x, i) =>
+        i === idx ? { ...x, id: data.id, _saving: false, _expanded: false } : x
+      ))
+    } else {
+      setPolizasExcedentes((prev) => prev.map((x, i) => i === idx ? { ...x, _saving: false } : x))
+    }
+  }
+
+  async function deletePoliza(idx: number) {
+    const p = polizasExcedentes[idx]
+    if (!p.id) {
+      setPolizasExcedentes((prev) => prev.filter((_, i) => i !== idx))
+      return
+    }
+    if (!confirm("¿Eliminar esta póliza excedente?")) return
+    await fetch(`/api/leads/${leadId}/polizas-excedentes/${p.id}`, { method: "DELETE" })
+    setPolizasExcedentes((prev) => prev.filter((_, i) => i !== idx))
+  }
 
   async function save() {
     setSaving(true)
@@ -585,7 +682,10 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                 </Select>
                 <Input label="Código CIE-9 / CPT" value={form.codigo_procedimiento ?? ""} onChange={set("codigo_procedimiento")} readOnly={ro} style={{ textTransform: "uppercase" }} />
               </div>
-              <Input label="Fecha tentativa deseada" type="date" value={form.fecha_tentativa ?? ""} onChange={set("fecha_tentativa")} readOnly={ro} />
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Fecha tentativa deseada" type="date" value={form.fecha_tentativa ?? ""} onChange={set("fecha_tentativa")} readOnly={ro} />
+                <Input label="Fecha del diagnóstico" type="date" value={form.fecha_diagnostico ?? ""} onChange={set("fecha_diagnostico")} readOnly={ro} />
+              </div>
               <Textarea label="Notas del procedimiento" value={form.notas_procedimiento ?? ""} onChange={set("notas_procedimiento")} rows={3} readOnly={ro} style={{ textTransform: "uppercase" }} />
 
               <SectionTitle>Padecimientos e Historia Clínica</SectionTitle>
@@ -937,6 +1037,204 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                 <Input label="Teléfono del contacto" value={form.contacto_aseguradora_telefono ?? ""} onChange={set("contacto_aseguradora_telefono")} readOnly={ro} />
               </div>
               <Textarea label="Notas de la validación" value={form.notas_validacion ?? ""} onChange={set("notas_validacion")} rows={3} readOnly={ro} style={{ textTransform: "uppercase" }} />
+
+              {/* ── PÓLIZAS EXCEDENTES ── */}
+              <div className="flex items-center justify-between pt-1 pb-2 border-b mt-2"
+                style={{ borderColor: "var(--border)" }}>
+                <h3 className="text-xs font-semibold uppercase tracking-wide"
+                  style={{ color: "var(--muted)" }}>
+                  Pólizas Excedentes
+                </h3>
+                {!ro && (
+                  <button
+                    onClick={() => setPolizasExcedentes((prev) => [...prev, emptyPoliza()])}
+                    className="flex items-center gap-1 h-7 px-3 rounded-lg text-xs font-medium transition-colors"
+                    style={{ background: "var(--accent)", color: "#fff" }}
+                  >
+                    <Plus size={12} />
+                    Agregar póliza
+                  </button>
+                )}
+              </div>
+
+              {polizasExcedentes.length === 0 && (
+                <p className="text-xs py-2" style={{ color: "var(--muted)" }}>
+                  Sin pólizas excedentes registradas.{!ro && " Usa el botón + para agregar."}
+                </p>
+              )}
+
+              {polizasExcedentes.map((p, idx) => (
+                <div key={p.id ?? `new-${idx}`} className="rounded-xl border overflow-hidden"
+                  style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-4 py-3"
+                    style={{ background: "var(--surface)" }}>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate" style={{ color: "var(--text)" }}>
+                        {p.aseguradora_nombre || (p.id ? `Póliza #${idx + 1}` : "Nueva póliza excedente")}
+                      </p>
+                      {p.numero_poliza && (
+                        <p className="text-xs mt-0.5 font-mono" style={{ color: "var(--muted)" }}>
+                          {p.numero_poliza}
+                          {p.suma_asegurada ? ` · $${parseFloat(p.suma_asegurada).toLocaleString("es-MX")} ${p.moneda}` : ""}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 ml-2">
+                      {!ro && (
+                        <button onClick={() => deletePoliza(idx)}
+                          className="p-1.5 rounded-lg transition-colors hover:bg-red-50"
+                          style={{ color: "var(--muted)" }} title="Eliminar">
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => updatePoliza(idx, "_expanded", !p._expanded)}
+                        className="p-1.5 rounded-lg transition-colors"
+                        style={{ color: "var(--muted)" }}>
+                        {p._expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Body — expandible */}
+                  {p._expanded && (
+                    <div className="p-4 space-y-3 border-t" style={{ borderColor: "var(--border)" }}>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-medium" style={{ color: "var(--muted)" }}>Aseguradora</label>
+                          <input readOnly={ro} value={p.aseguradora_nombre}
+                            onChange={(e) => updatePoliza(idx, "aseguradora_nombre", e.target.value)}
+                            placeholder="Nombre de la aseguradora"
+                            className="h-9 px-3 rounded-lg border text-sm outline-none"
+                            style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)", textTransform: "uppercase" }} />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-medium" style={{ color: "var(--muted)" }}>Tipo de plan</label>
+                          <select disabled={ro} value={p.tipo_plan}
+                            onChange={(e) => updatePoliza(idx, "tipo_plan", e.target.value)}
+                            className="h-9 px-3 rounded-lg border text-sm outline-none appearance-none"
+                            style={{
+                              background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)",
+                              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+                              backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center", backgroundSize: "14px", paddingRight: "32px",
+                            }}>
+                            <option value="">Sin definir</option>
+                            <option value="individual">Individual</option>
+                            <option value="familiar">Familiar</option>
+                            <option value="colectivo">Colectivo</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-medium" style={{ color: "var(--muted)" }}>Número de póliza</label>
+                          <input readOnly={ro} value={p.numero_poliza}
+                            onChange={(e) => updatePoliza(idx, "numero_poliza", e.target.value)}
+                            className="h-9 px-3 rounded-lg border text-sm outline-none font-mono"
+                            style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)", textTransform: "uppercase" }} />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-medium" style={{ color: "var(--muted)" }}>Número de certificado</label>
+                          <input readOnly={ro} value={p.numero_certificado}
+                            onChange={(e) => updatePoliza(idx, "numero_certificado", e.target.value)}
+                            className="h-9 px-3 rounded-lg border text-sm outline-none font-mono"
+                            style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)", textTransform: "uppercase" }} />
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium" style={{ color: "var(--muted)" }}>Nombre del titular</label>
+                        <input readOnly={ro} value={p.nombre_titular}
+                          onChange={(e) => updatePoliza(idx, "nombre_titular", e.target.value)}
+                          className="h-9 px-3 rounded-lg border text-sm outline-none"
+                          style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)", textTransform: "uppercase" }} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-medium" style={{ color: "var(--muted)" }}>Vigencia inicio</label>
+                          <input type="date" readOnly={ro} value={p.vigencia_inicio}
+                            onChange={(e) => updatePoliza(idx, "vigencia_inicio", e.target.value)}
+                            className="h-9 px-3 rounded-lg border text-sm outline-none"
+                            style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }} />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-medium" style={{ color: "var(--muted)" }}>Vigencia fin</label>
+                          <input type="date" readOnly={ro} value={p.vigencia_fin}
+                            onChange={(e) => updatePoliza(idx, "vigencia_fin", e.target.value)}
+                            className="h-9 px-3 rounded-lg border text-sm outline-none"
+                            style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }} />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-medium" style={{ color: "var(--muted)" }}>Suma asegurada</label>
+                          <input type="number" readOnly={ro} value={p.suma_asegurada}
+                            onChange={(e) => updatePoliza(idx, "suma_asegurada", e.target.value)}
+                            className="h-9 px-3 rounded-lg border text-sm outline-none"
+                            style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }} />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-medium" style={{ color: "var(--muted)" }}>Moneda</label>
+                          <select disabled={ro} value={p.moneda}
+                            onChange={(e) => updatePoliza(idx, "moneda", e.target.value)}
+                            className="h-9 px-3 rounded-lg border text-sm outline-none appearance-none"
+                            style={{
+                              background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)",
+                              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+                              backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center", backgroundSize: "14px", paddingRight: "32px",
+                            }}>
+                            <option value="MXN">MXN</option>
+                            <option value="USD">USD</option>
+                          </select>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-medium" style={{ color: "var(--muted)" }}>Deducible</label>
+                          <input type="number" readOnly={ro} value={p.deducible}
+                            onChange={(e) => updatePoliza(idx, "deducible", e.target.value)}
+                            className="h-9 px-3 rounded-lg border text-sm outline-none"
+                            style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }} />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-medium" style={{ color: "var(--muted)" }}>Coaseguro (%)</label>
+                          <input type="number" readOnly={ro} value={p.coaseguro_pct}
+                            onChange={(e) => updatePoliza(idx, "coaseguro_pct", e.target.value)}
+                            className="h-9 px-3 rounded-lg border text-sm outline-none"
+                            style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }} />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-medium" style={{ color: "var(--muted)" }}>Tope de coaseguro</label>
+                          <input type="number" readOnly={ro} value={p.tope_coaseguro}
+                            onChange={(e) => updatePoliza(idx, "tope_coaseguro", e.target.value)}
+                            className="h-9 px-3 rounded-lg border text-sm outline-none"
+                            style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }} />
+                        </div>
+                      </div>
+                      <BoolField label="¿Período de espera activo?"
+                        value={p.periodo_espera_activo}
+                        onChange={(v) => updatePoliza(idx, "periodo_espera_activo", v)}
+                        disabled={ro} />
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium" style={{ color: "var(--muted)" }}>Notas / limitantes / exclusiones</label>
+                        <textarea readOnly={ro} value={p.notas} rows={2}
+                          onChange={(e) => updatePoliza(idx, "notas", e.target.value)}
+                          placeholder="Limitantes, coberturas especiales, exclusiones..."
+                          className="px-3 py-2 rounded-lg border text-sm outline-none resize-none"
+                          style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)", textTransform: "uppercase" }} />
+                      </div>
+                      {!ro && (
+                        <button onClick={() => savePoliza(idx)} disabled={p._saving}
+                          className="flex items-center gap-1.5 h-8 px-4 rounded-lg text-xs font-medium transition-all"
+                          style={{ background: "var(--accent)", color: "#fff", opacity: p._saving ? 0.6 : 1 }}>
+                          <Save size={11} />
+                          {p._saving ? "Guardando..." : p.id ? "Actualizar póliza" : "Guardar póliza"}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
             </>
           )}
 
