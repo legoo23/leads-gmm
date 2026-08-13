@@ -1,4 +1,5 @@
 import { Resend } from "resend"
+import QRCode from "qrcode"
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -18,7 +19,6 @@ interface VendedorEmailData {
 function buildWelcomeHtml(v: VendedorEmailData): string {
   const nombreCompleto = [v.nombre, v.apellido_paterno].filter(Boolean).join(" ")
   const link           = `${APP_URL}/r/${v.codigo_unico}`
-  const qrUrl          = `${APP_URL}/api/qr/${v.codigo_unico}`
   const bienvenidaUrl  = `${APP_URL}/bienvenida/${v.codigo_unico}`
   const verde          = "#0F6E56"
   const verdeClaro     = "#E1F5EE"
@@ -72,7 +72,7 @@ function buildWelcomeHtml(v: VendedorEmailData): string {
     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:32px;">
     <tr><td style="text-align:center;">
       <p style="margin:0 0 14px;font-size:14px;font-weight:600;color:#374151;">Tu código QR</p>
-      <img src="${qrUrl}" alt="Código QR ${v.codigo_unico}" width="180" height="180"
+      <img src="cid:qr-code" alt="Código QR ${v.codigo_unico}" width="180" height="180"
         style="border-radius:12px;border:1px solid #E5E7EB;display:block;margin:0 auto;" />
       <p style="margin:10px 0 0;font-size:12px;color:#9CA3AF;">Descárgalo, imprímelo o compártelo en tus redes</p>
     </td></tr>
@@ -147,14 +147,27 @@ function buildWelcomeHtml(v: VendedorEmailData): string {
 export async function sendWelcomeVendedor(v: VendedorEmailData): Promise<void> {
   if (!v.email) throw new Error("El vendedor no tiene email registrado")
 
-  const nombreCompleto = [v.nombre, v.apellido_paterno].filter(Boolean).join(" ")
   const html = buildWelcomeHtml(v)
+
+  const qrBuffer = await QRCode.toBuffer(`${APP_URL}/r/${v.codigo_unico}`, {
+    type:   "png",
+    width:  360,
+    margin: 2,
+    color:  { dark: "#0F6E56", light: "#FFFFFF" },
+  })
 
   const { error } = await resend.emails.send({
     from:    `${FROM_NAME} <${FROM_ADDR}>`,
     to:      [v.email],
     subject: `Bienvenido a iHelp Medica — Tu código: ${v.codigo_unico}`,
     html,
+    attachments: [
+      {
+        filename:   `QR-${v.codigo_unico}.png`,
+        content:    qrBuffer.toString("base64"),
+        content_id: "qr-code",
+      },
+    ],
   })
 
   if (error) throw new Error(error.message)
