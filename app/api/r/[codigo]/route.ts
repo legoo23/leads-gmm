@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServiceClient } from "@/lib/supabase/server"
 import { assertLicense } from "@/lib/license"
+import { encryptField, hashField } from "@/lib/crypto"
 import { normalizePhone, normalizeEmail, generateFolio } from "@/lib/utils"
 
 export async function POST(
@@ -43,23 +44,25 @@ export async function POST(
 
   const folio = generateFolio()
 
+  const emailNorm = normalizeEmail(body.email)
   const { data, error } = await svc.from("leads").insert({
     folio,
     nombre,
     apellido_paterno: String(body.apellido_paterno ?? "").trim().toUpperCase() || null,
     apellido_materno: String(body.apellido_materno ?? "").trim().toUpperCase() || null,
-    telefono,
-    email:         normalizeEmail(body.email) || null,
-    estado_ciudad: body.estado_ciudad         || null,
-    procedimiento: body.procedimiento         || null,
-    id_aseguradora: body.id_aseguradora ? parseInt(String(body.id_aseguradora)) : null,
-    notas:          body.notas                || null,
+    telefono_enc:    encryptField(telefono),
+    telefono_hash:   hashField(telefono),
+    ...(emailNorm ? { email_enc: encryptField(emailNorm), email_hash: hashField(emailNorm) } : {}),
+    estado_ciudad:   body.estado_ciudad  || null,
+    procedimiento:   body.procedimiento  || null,
+    id_aseguradora:  body.id_aseguradora ? parseInt(String(body.id_aseguradora)) : null,
+    notas:           body.notas          || null,
     codigo_referido: codigo.toUpperCase(),
-    id_vendedor:    vendedor.id,
-    fuente:         "qr",
-    prioridad:      "media",
-    etapa:          "nuevo",
-    estado:         "activo",
+    id_vendedor:     vendedor.id,
+    fuente:          "qr",
+    prioridad:       "media",
+    etapa:           "nuevo",
+    estado:          "activo",
     en_cola_revision: false,
   }).select("folio").single()
 

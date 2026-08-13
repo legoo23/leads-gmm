@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServiceClient } from "@/lib/supabase/server"
 import { assertLicense } from "@/lib/license"
+import { encryptField, hashField } from "@/lib/crypto"
 import { normalizePhone, normalizeEmail, generateFolio } from "@/lib/utils"
 
 // Mapeo flexible de nombre de aseguradora → id en catálogo
@@ -55,8 +56,10 @@ export async function POST(req: NextRequest) {
     folio,
     nombre,
     apellido_paterno: String(body.apellido_paterno ?? "").trim().toUpperCase() || null,
-    telefono,
-    email,
+    telefono_enc:   encryptField(telefono),
+    telefono_hash:  hashField(telefono),
+    email_enc:      encryptField(email),
+    email_hash:     hashField(email),
     estado_ciudad:  body.estado_ciudad  || null,
     procedimiento:  body.procedimiento  || null,
     id_aseguradora: idAseguradora,
