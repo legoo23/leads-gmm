@@ -2,8 +2,8 @@ import Link from "next/link"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Términos y Condiciones — TuCobertura",
-  description: "Términos y condiciones del servicio de TuCobertura.",
+  title: "Términos y Condiciones — iHelp Medica",
+  description: "Términos y condiciones del servicio de iHelp Medica.",
 }
 
 const VERDE = "#0F6E56"
@@ -17,7 +17,7 @@ export default function TerminosPage() {
           <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold"
               style={{ background: VERDE }}>+</div>
-            <span className="font-bold text-gray-800">TuCobertura</span>
+            <span className="font-bold text-gray-800">iHelp Medica</span>
           </Link>
         </div>
       </nav>
@@ -31,13 +31,13 @@ export default function TerminosPage() {
           <section>
             <h2 className="text-base font-bold text-gray-900 mb-2">1. Descripción del servicio</h2>
             <p>
-              TuCobertura (en adelante "el Servicio") es una plataforma de gestión y asesoría médico-administrativa
+              iHelp Medica (en adelante "el Servicio") es una plataforma de gestión y asesoría médico-administrativa
               que facilita la coordinación entre pacientes, aseguradoras de gastos médicos mayores (GMM),
               hospitales y médicos especialistas, con el fin de agilizar la autorización de cobertura y el
               ingreso hospitalario para procedimientos quirúrgicos.
             </p>
             <p className="mt-2 font-medium">
-              TuCobertura <strong>no es</strong> una compañía de seguros, no vende ni intermediaria pólizas,
+              iHelp Medica <strong>no es</strong> una compañía de seguros, no vende ni intermediaria pólizas,
               y no asume responsabilidad alguna por las decisiones de cobertura de las aseguradoras.
             </p>
           </section>
@@ -46,14 +46,14 @@ export default function TerminosPage() {
             <h2 className="text-base font-bold text-gray-900 mb-2">2. Gratuidad del servicio de asesoría</h2>
             <p>
               La asesoría y gestión de autorización prestada directamente al paciente es gratuita.
-              TuCobertura obtiene su remuneración de convenios con prestadores de servicios médicos
+              iHelp Medica obtiene su remuneración de convenios con prestadores de servicios médicos
               y hospitalarios, sin costo adicional para el paciente.
             </p>
           </section>
 
           <section>
             <h2 className="text-base font-bold text-gray-900 mb-2">3. Alcance de la asesoría</h2>
-            <p>La asesoría de TuCobertura incluye:</p>
+            <p>La asesoría de iHelp Medica incluye:</p>
             <ul className="list-disc pl-5 space-y-1 mt-2">
               <li>Revisión preliminar de la póliza GMM del paciente.</li>
               <li>Gestión de la solicitud de autorización ante la aseguradora correspondiente.</li>
@@ -83,9 +83,9 @@ export default function TerminosPage() {
           <section>
             <h2 className="text-base font-bold text-gray-900 mb-2">5. Limitación de responsabilidad</h2>
             <p>
-              TuCobertura no garantiza que la aseguradora apruebe la cobertura de ningún procedimiento.
+              iHelp Medica no garantiza que la aseguradora apruebe la cobertura de ningún procedimiento.
               La decisión de cobertura es facultad exclusiva de la aseguradora conforme a los términos
-              de la póliza del paciente. En ningún caso TuCobertura será responsable por daños directos,
+              de la póliza del paciente. En ningún caso iHelp Medica será responsable por daños directos,
               indirectos, incidentales o consecuentes derivados del uso o imposibilidad de uso del Servicio.
             </p>
           </section>
@@ -95,14 +95,14 @@ export default function TerminosPage() {
             <p>
               El tratamiento de los datos personales del usuario se rige por el{" "}
               <Link href="/privacidad" style={{ color: VERDE }} className="underline">Aviso de Privacidad</Link>{" "}
-              de TuCobertura, que forma parte integrante de estos términos.
+              de iHelp Medica, que forma parte integrante de estos términos.
             </p>
           </section>
 
           <section>
             <h2 className="text-base font-bold text-gray-900 mb-2">7. Propiedad intelectual</h2>
             <p>
-              Todos los contenidos, marcas, logotipos, textos y elementos visuales de TuCobertura son
+              Todos los contenidos, marcas, logotipos, textos y elementos visuales de iHelp Medica son
               propiedad exclusiva del Responsable y están protegidos por la legislación mexicana de propiedad
               intelectual. Su reproducción total o parcial sin autorización expresa está prohibida.
             </p>
@@ -111,7 +111,7 @@ export default function TerminosPage() {
           <section>
             <h2 className="text-base font-bold text-gray-900 mb-2">8. Modificaciones</h2>
             <p>
-              TuCobertura se reserva el derecho de modificar estos Términos en cualquier momento. Los cambios
+              iHelp Medica se reserva el derecho de modificar estos Términos en cualquier momento. Los cambios
               serán publicados en esta página con la fecha de actualización. El uso continuado del Servicio
               implica la aceptación de los términos vigentes.
             </p>
@@ -130,14 +130,14 @@ export default function TerminosPage() {
             <h2 className="text-base font-bold text-gray-900 mb-2">10. Contacto</h2>
             <p>
               Para cualquier consulta sobre estos Términos:{" "}
-              <a href="mailto:hola@tucobertura.mx" style={{ color: VERDE }}>hola@tucobertura.mx</a>
+              <a href="mailto:hola@ihelpmedica.mx" style={{ color: VERDE }}>hola@ihelpmedica.mx</a>
             </p>
           </section>
         </div>
 
         <div className="mt-10 pt-6 border-t border-gray-200">
           <Link href="/" className="text-sm font-medium" style={{ color: VERDE }}>
-            ← Regresar a TuCobertura
+            ← Regresar a iHelp Medica
           </Link>
         </div>
       </main>

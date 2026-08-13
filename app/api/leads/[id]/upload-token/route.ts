@@ -55,7 +55,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://leads-gmm.vercel.app"
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ihelpmedica.mx"
   const link = `${appUrl}/docs/${data.token}`
 
   await logAudit({

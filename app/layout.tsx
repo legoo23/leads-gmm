@@ -6,7 +6,7 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] })
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: { default: "Leads GMM", template: "%s · Leads GMM" },
+  title: { default: "iHelp Medica", template: "%s · iHelp Medica" },
   description: "Gestión de leads para procedimientos quirúrgicos con seguro GMM",
 }
 

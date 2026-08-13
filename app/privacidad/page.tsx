@@ -2,8 +2,8 @@ import Link from "next/link"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Aviso de Privacidad — TuCobertura",
-  description: "Aviso de privacidad integral conforme a la LFPDPPP de TuCobertura.",
+  title: "Aviso de Privacidad — iHelp Medica",
+  description: "Aviso de privacidad integral conforme a la LFPDPPP de iHelp Medica.",
 }
 
 const VERDE = "#0F6E56"
@@ -17,7 +17,7 @@ export default function PrivacidadPage() {
           <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold"
               style={{ background: VERDE }}>+</div>
-            <span className="font-bold text-gray-800">TuCobertura</span>
+            <span className="font-bold text-gray-800">iHelp Medica</span>
           </Link>
         </div>
       </nav>
@@ -31,9 +31,9 @@ export default function PrivacidadPage() {
           <section>
             <h2 className="text-base font-bold text-gray-900 mb-2">I. Identidad y domicilio del Responsable</h2>
             <p>
-              TuCobertura (en adelante "el Responsable") es responsable del tratamiento de sus datos personales.
+              iHelp Medica (en adelante "el Responsable") es responsable del tratamiento de sus datos personales.
               Domicilio: Ciudad de México, México. Contacto de privacidad:{" "}
-              <a href="mailto:privacidad@tucobertura.mx" style={{ color: VERDE }}>privacidad@tucobertura.mx</a>.
+              <a href="mailto:privacidad@ihelpmedica.mx" style={{ color: VERDE }}>privacidad@ihelpmedica.mx</a>.
             </p>
           </section>
 
@@ -68,7 +68,7 @@ export default function PrivacidadPage() {
             </ul>
             <p className="mt-2 text-sm text-gray-600">
               Si no desea que sus datos sean tratados para las finalidades secundarias, puede manifestarlo enviando
-              un correo a <a href="mailto:privacidad@tucobertura.mx" style={{ color: VERDE }}>privacidad@tucobertura.mx</a>.
+              un correo a <a href="mailto:privacidad@ihelpmedica.mx" style={{ color: VERDE }}>privacidad@ihelpmedica.mx</a>.
             </p>
           </section>
 
@@ -117,7 +117,7 @@ export default function PrivacidadPage() {
             </p>
             <p className="mt-2">
               Para ejercer cualquiera de estos derechos, envíe su solicitud a:{" "}
-              <a href="mailto:privacidad@tucobertura.mx" style={{ color: VERDE }}>privacidad@tucobertura.mx</a>,
+              <a href="mailto:privacidad@ihelpmedica.mx" style={{ color: VERDE }}>privacidad@ihelpmedica.mx</a>,
               indicando su nombre completo, datos de contacto y el derecho que desea ejercer.
               Recibirá respuesta en un plazo máximo de 20 días hábiles.
             </p>
@@ -143,7 +143,7 @@ export default function PrivacidadPage() {
 
         <div className="mt-10 pt-6 border-t border-gray-200">
           <Link href="/" className="text-sm font-medium" style={{ color: VERDE }}>
-            ← Regresar a TuCobertura
+            ← Regresar a iHelp Medica
           </Link>
         </div>
       </main>

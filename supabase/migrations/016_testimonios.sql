@@ -28,7 +28,7 @@ INSERT INTO testimonios (nombre, detalle, texto, estrellas, activo, orden) VALUE
 (
   'Carlos Mendoza',
   'Hernia Inguinal • AXA',
-  'Me querían cobrar coaseguro doble. TuCobertura revisó mi póliza, peleó con la aseguradora y me consiguieron el médico en red. Gracias totales.',
+  'Me querían cobrar coaseguro doble. iHelp Medica revisó mi póliza, peleó con la aseguradora y me consiguieron el médico en red. Gracias totales.',
   5, true, 2
 ),
 (

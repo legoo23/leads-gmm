@@ -4,8 +4,8 @@ import { createServiceClient } from "@/lib/supabase/server"
 import CaptureClient from "./CaptureClient"
 
 export const metadata: Metadata = {
-  title: "Verificación de cobertura GMM",
-  description: "Completa tus datos y verifica si tu seguro GMM cubre el procedimiento que necesitas.",
+  title: "iHelp Medica — Verifica tu cobertura",
+  description: "Completa tus datos y verifica si tu seguro de Gastos Médicos Mayores cubre el procedimiento que necesitas.",
 }
 
 export default async function CapturaPublicaPage({

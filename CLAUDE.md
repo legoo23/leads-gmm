@@ -1,6 +1,6 @@
 # Sistema de Gestión de Leads — Procedimientos Quirúrgicos con Seguro GMM
 
-> Documento vivo del proyecto. Nombre del producto y dominio pendientes de definir.
+> Documento vivo del proyecto. Producto: **iHelp Medica** · Dominio: **ihelpmedica.mx**
 > Stack: **Next.js 15 App Router · TypeScript · Tailwind CSS v4 · Supabase · Vercel**
 
 ---
@@ -26,8 +26,8 @@ Campaña / QR del vendedor → Lead llega (código referido embebido)
 
 ## 2. Identidad del proyecto
 
-- **Nombre del producto:** Pendiente de definir (sin relación con ninguna marca hospitalaria)
-- **Dominio:** Pendiente — nuevo, nombre completamente independiente
+- **Nombre del producto:** iHelp Medica
+- **Dominio:** ihelpmedica.mx
 - **GitHub:** Repo nuevo (privado)
 - **Deploy:** Vercel (Fluid Compute, Node.js 24)
 - **Base de datos:** Supabase — proyecto nuevo, independiente de cualquier otro sistema
@@ -167,7 +167,7 @@ Lead → etapa 'ganado'
 
 ### URL del QR
 ```
-https://tudominio.com/r/[CODIGO-VENDEDOR]
+https://ihelpmedica.mx/r/[CODIGO-VENDEDOR]
 ```
 Al abrir, el formulario de captura recibe el código como query param y lo almacena oculto.
 
@@ -379,8 +379,8 @@ WHATSAPP_WEBHOOK_VERIFY_TOKEN=mi_token_secreto
 WHATSAPP_APP_SECRET=firma_hmac_secret
 
 # App
-NEXT_PUBLIC_APP_URL=https://tudominio.com       # para generar URLs de QR
-NEXT_PUBLIC_VENDOR_CODE_PREFIX=GMM              # prefix de códigos de vendedor
+NEXT_PUBLIC_APP_URL=https://ihelpmedica.mx       # para generar URLs de QR
+NEXT_PUBLIC_VENDOR_CODE_PREFIX=IHM              # prefix de códigos de vendedor (iHelp Medica)
 ```
 
 **Variables de solo servidor (nunca en `NEXT_PUBLIC_*`):**
@@ -658,5 +658,5 @@ Ver `docs/DESARROLLO.md` y memoria `security_model.md` para detalle completo.
 
 ## 14. Preguntas pendientes (mínimas)
 
-- [ ] **Nombre del producto / dominio** — define el prefix del código de vendedor y las URLs de QR
+- [x] **Nombre del producto:** iHelp Medica · **Dominio:** ihelpmedica.mx · **Prefix vendedor:** IHM
 - [ ] **Número de WhatsApp de producción** — para registrar en Meta y configurar el bot

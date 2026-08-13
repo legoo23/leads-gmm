@@ -57,7 +57,7 @@ const TESTIMONIOS_DEFAULT: Testimonio[] = [
   { id: 0, nombre: "María González",  detalle: "Colecistectomía • GNP Seguros", estrellas: 5,
     texto: "Pensé que iba a pagar una fortuna por la cirugía. Gestionaron todo, no dejé depósito y el seguro pagó casi todo. ¡Súper recomendados!" },
   { id: 1, nombre: "Carlos Mendoza",  detalle: "Hernia Inguinal • AXA",         estrellas: 5,
-    texto: "Me querían cobrar coaseguro doble. TuCobertura revisó mi póliza, peleó con la aseguradora y me consiguieron el médico en red. Gracias totales." },
+    texto: "Me querían cobrar coaseguro doble. iHelp Medica revisó mi póliza, peleó con la aseguradora y me consiguieron el médico en red. Gracias totales." },
   { id: 2, nombre: "Sofía Hernández", detalle: "Artroscopia • MetLife",          estrellas: 5,
     texto: "La atención fue impecable. Me programaron la cirugía de rodilla en 3 días y el asesor me acompañó al hospital. No sentí el proceso administrativo." },
 ]
@@ -173,7 +173,7 @@ export default function LandingClient({
           <div className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-xl"
               style={{ background: VERDE }}>+</div>
-            <span className="font-bold text-gray-800 text-xl">TuCobertura</span>
+            <span className="font-bold text-gray-800 text-xl">iHelp Medica</span>
           </div>
           <a href="#formulario"
             className="text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors shadow-sm hidden md:block"
@@ -433,7 +433,7 @@ export default function LandingClient({
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-8 h-8 rounded-md flex items-center justify-center text-white font-bold"
                   style={{ background: VERDE }}>+</div>
-                <span className="font-bold text-white text-lg">TuCobertura</span>
+                <span className="font-bold text-white text-lg">iHelp Medica</span>
               </div>
               <p className="text-sm max-w-xs">
                 Defensor del paciente. Gestión de cirugías y trámites con Seguro de Gastos Médicos Mayores en México.
@@ -450,13 +450,13 @@ export default function LandingClient({
               <h4 className="text-white font-semibold mb-4 text-sm uppercase tracking-wider">Contacto</h4>
               <ul className="space-y-2 text-sm mb-4">
                 <li className="flex items-center gap-2"><Phone size={14} style={{ color: VERDE }} /> 55 1234 5678</li>
-                <li className="flex items-center gap-2"><Mail size={14} style={{ color: VERDE }} /> hola@tucobertura.mx</li>
+                <li className="flex items-center gap-2"><Mail size={14} style={{ color: VERDE }} /> hola@ihelpmedica.mx</li>
                 <li className="flex items-center gap-2"><MapPin size={14} style={{ color: VERDE }} /> CDMX y Área Metropolitana</li>
               </ul>
             </div>
           </div>
           <div className="border-t border-gray-800 pt-8 text-xs text-center md:flex md:justify-between md:text-left">
-            <p>© 2026 TuCobertura. Todos los derechos reservados.</p>
+            <p>© 2026 iHelp Medica. Todos los derechos reservados.</p>
             <p className="mt-2 md:mt-0">No somos una compañía de seguros. Somos asesores y gestores de servicios médicos.</p>
           </div>
         </div>
