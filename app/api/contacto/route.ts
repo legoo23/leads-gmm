@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     procedimiento:  body.procedimiento  || null,
     id_aseguradora: idAseguradora,
     notas:          notasLineas.length ? notasLineas.join("\n") : null,
-    fuente:         "formulario_web",
+    fuente:         "formulario",
     prioridad:      "media",
     etapa:          "nuevo",
     estado:         "activo",
