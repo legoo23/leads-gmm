@@ -32,7 +32,7 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Rutas públicas que no requieren autenticación
-  const publicPaths = ["/login", "/r/", "/api/whatsapp/", "/auth/", "/privacidad", "/terminos", "/api/contacto"]
+  const publicPaths = ["/login", "/r/", "/api/whatsapp/", "/auth/", "/privacidad", "/terminos", "/api/contacto", "/api/testimonios"]
   const isPublic = pathname === "/" || publicPaths.some((p) => pathname.startsWith(p))
 
   if (!isPublic && !user) {

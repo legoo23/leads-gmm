@@ -5,6 +5,7 @@ import {
   ShieldCheck, CircleDollarSign, Stethoscope,
   MapPin, Phone, Mail, Lock, CheckCircle, ChevronDown, Shield,
 } from "lucide-react"
+import type { Testimonio } from "./page"
 
 // ── Constantes ─────────────────────────────────────────────────────────────
 
@@ -52,12 +53,12 @@ const PASOS = [
   { n: "4", titulo: "Alta y Seguimiento",         desc: "Gestionamos el alta administrativa para que el seguro pague al hospital." },
 ]
 
-const TESTIMONIOS = [
-  { nombre: "María González", detalle: "Colecistectomía • GNP Seguros",
+const TESTIMONIOS_DEFAULT: Testimonio[] = [
+  { id: 0, nombre: "María González",  detalle: "Colecistectomía • GNP Seguros", estrellas: 5,
     texto: "Pensé que iba a pagar una fortuna por la cirugía. Gestionaron todo, no dejé depósito y el seguro pagó casi todo. ¡Súper recomendados!" },
-  { nombre: "Carlos Mendoza", detalle: "Hernia Inguinal • AXA",
+  { id: 1, nombre: "Carlos Mendoza",  detalle: "Hernia Inguinal • AXA",         estrellas: 5,
     texto: "Me querían cobrar coaseguro doble. TuCobertura revisó mi póliza, peleó con la aseguradora y me consiguieron el médico en red. Gracias totales." },
-  { nombre: "Sofía Hernández", detalle: "Artroscopia • MetLife",
+  { id: 2, nombre: "Sofía Hernández", detalle: "Artroscopia • MetLife",          estrellas: 5,
     texto: "La atención fue impecable. Me programaron la cirugía de rodilla en 3 días y el asesor me acompañó al hospital. No sentí el proceso administrativo." },
 ]
 
@@ -101,10 +102,11 @@ const focusStyle = { "--tw-ring-color": VERDE } as React.CSSProperties
 
 // ── Main Component ──────────────────────────────────────────────────────────
 
-export default function LandingClient() {
+export default function LandingClient({ testimonios }: { testimonios: Testimonio[] }) {
+  const lista = testimonios.length > 0 ? testimonios : TESTIMONIOS_DEFAULT
   const [form, setForm] = useState({
     nombre: "", apellido_paterno: "", telefono: "",
-    correo: "", procedimiento: "", aseguradora: "", estado_ciudad: "",
+    email: "", procedimiento: "", aseguradora: "", estado_ciudad: "",
   })
   const [consentimiento, setConsentimiento] = useState(false)
   const [errors, setErrors]   = useState<Record<string, string>>({})
@@ -114,7 +116,7 @@ export default function LandingClient() {
   function setF(k: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
       let v = e.target.value
-      if (k === "nombre" || k === "apellido_paterno") v = v.toUpperCase()
+      if (k === "nombre" || k === "apellido_paterno" || k === "procedimiento") v = v.toUpperCase()
       if (k === "telefono") v = v.replace(/\D/g, "").slice(0, 10)
       setForm((f) => ({ ...f, [k]: v }))
       setErrors((p) => { const n = { ...p }; delete n[k]; return n })
@@ -126,8 +128,8 @@ export default function LandingClient() {
     if (!form.nombre.trim())        e.nombre          = "Requerido"
     if (!form.apellido_paterno.trim()) e.apellido_paterno = "Requerido"
     if (form.telefono.length !== 10) e.telefono        = "El teléfono debe tener exactamente 10 dígitos"
-    if (!form.correo.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.correo))
-                                    e.correo          = "Ingresa un correo electrónico válido"
+    if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+                                    e.email           = "Ingresa un correo electrónico válido"
     if (!form.procedimiento.trim()) e.procedimiento   = "Requerido"
     if (!form.aseguradora)          e.aseguradora     = "Requerido"
     if (!form.estado_ciudad)        e.estado_ciudad   = "Requerido"
@@ -270,13 +272,15 @@ export default function LandingClient() {
             Historias de pacientes que se olvidaron del estrés hospitalario
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {TESTIMONIOS.map(({ nombre, detalle, texto }) => (
-              <div key={nombre} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex flex-col">
-                <div className="flex gap-1 mb-4 text-lg" style={{ color: VERDE }}>★★★★★</div>
+            {lista.map(({ id, nombre, detalle, texto, estrellas }) => (
+              <div key={id} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex flex-col">
+                <div className="flex gap-1 mb-4 text-lg" style={{ color: VERDE }}>
+                  {"★".repeat(estrellas)}{"☆".repeat(5 - estrellas)}
+                </div>
                 <p className="text-gray-700 text-sm italic mb-6 flex-grow">&ldquo;{texto}&rdquo;</p>
                 <div className="border-t pt-4 mt-auto">
                   <p className="font-bold text-gray-900 text-sm">{nombre}</p>
-                  <p className="text-xs text-gray-500">{detalle}</p>
+                  {detalle && <p className="text-xs text-gray-500">{detalle}</p>}
                 </div>
               </div>
             ))}
@@ -332,9 +336,9 @@ export default function LandingClient() {
                     <input className={inputCls} style={focusStyle} inputMode="numeric"
                       value={form.telefono} onChange={setF("telefono")} placeholder="5512345678" maxLength={10} />
                   </Campo>
-                  <Campo label="Correo Electrónico" required error={errors.correo}>
+                  <Campo label="Correo Electrónico" required error={errors.email}>
                     <input type="email" className={inputCls} style={focusStyle}
-                      value={form.correo} onChange={setF("correo")} placeholder="tucorreo@ejemplo.com" />
+                      value={form.email} onChange={setF("email")} placeholder="tucorreo@ejemplo.com" />
                   </Campo>
                 </div>
 

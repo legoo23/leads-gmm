@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
-import { Settings, Users, DollarSign, Plus, Pencil, Trash2, UserX, UserCheck, BarChart2 } from "lucide-react"
+import { Settings, Users, DollarSign, Plus, Pencil, Trash2, UserX, UserCheck, BarChart2, Star, Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Modal } from "@/components/ui/modal"
 import { Input, Select } from "@/components/ui/input"
@@ -11,10 +11,11 @@ interface Nivel { id: number; nombre: string; monto: number; descripcion: string
 interface UserProfile { id: string; nombre: string; email: string; rol: string; activo: boolean }
 
 const TABS = [
-  { key: "usuarios", label: "Usuarios",             icon: Users },
-  { key: "niveles",  label: "Niveles de comisión",  icon: DollarSign },
-  { key: "reportes", label: "Reportes",             icon: BarChart2 },
-  { key: "sistema",  label: "Sistema",              icon: Settings },
+  { key: "usuarios",    label: "Usuarios",             icon: Users },
+  { key: "niveles",     label: "Niveles de comisión",  icon: DollarSign },
+  { key: "reportes",    label: "Reportes",             icon: BarChart2 },
+  { key: "testimonios", label: "Testimonios",          icon: Star },
+  { key: "sistema",     label: "Sistema",              icon: Settings },
 ]
 
 const ETAPA_LABELS: Record<string, { label: string; color: string; bg: string }> = {
@@ -72,6 +73,16 @@ export default function AdminPage() {
   const [loadingRpt, setLoadingRpt]     = useState(false)
   const [rptLoaded, setRptLoaded]       = useState(false)
 
+  /* ── Testimonios ───────────────────────────── */
+  interface Testimonio { id: number; nombre: string; detalle: string | null; texto: string; estrellas: number; activo: boolean; orden: number }
+  const [testimonios,    setTestimonios]    = useState<Testimonio[]>([])
+  const [tstLoaded,      setTstLoaded]      = useState(false)
+  const [tstLoading,     setTstLoading]     = useState(false)
+  const [tstModal,       setTstModal]       = useState<"nuevo" | Testimonio | null>(null)
+  const [tstForm,        setTstForm]        = useState({ nombre: "", detalle: "", texto: "", estrellas: "5", orden: "0", activo: true })
+  const [tstTogglingId,  setTstTogglingId]  = useState<number | null>(null)
+  const [tstDeletingId,  setTstDeletingId]  = useState<number | null>(null)
+
   /* ── Modales ───────────────────────────────── */
   const [modalNuevoUsuario, setModalNuevoUsuario] = useState(false)
   const [modalEditRol,      setModalEditRol]      = useState<UserProfile | null>(null)
@@ -90,7 +101,8 @@ export default function AdminPage() {
   }, [])
 
   useEffect(() => {
-    if (tab === "reportes" && !rptLoaded) loadReportes()
+    if (tab === "reportes"    && !rptLoaded) loadReportes()
+    if (tab === "testimonios" && !tstLoaded) loadTestimonios()
   }, [tab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadReportes() {
@@ -114,6 +126,70 @@ export default function AdminPage() {
     setNiveles(n.data ?? [])
     setUsuarios(u.data ?? [])
     setLoading(false)
+  }
+
+  /* ── Testimonios ──────────────────────────── */
+  async function loadTestimonios() {
+    setTstLoading(true)
+    const r = await fetch("/api/admin/testimonios").then((x) => x.json()).catch(() => ({ data: [] }))
+    setTestimonios(r.data ?? [])
+    setTstLoaded(true)
+    setTstLoading(false)
+  }
+
+  function openNuevoTst() {
+    setTstForm({ nombre: "", detalle: "", texto: "", estrellas: "5", orden: "0", activo: true })
+    setError(""); setTstModal("nuevo")
+  }
+
+  function openEditTst(t: Testimonio) {
+    setTstForm({ nombre: t.nombre, detalle: t.detalle ?? "", texto: t.texto, estrellas: String(t.estrellas), orden: String(t.orden), activo: t.activo })
+    setError(""); setTstModal(t)
+  }
+
+  async function guardarTst(e: React.FormEvent) {
+    e.preventDefault(); setSaving(true); setError("")
+    const payload = {
+      nombre:    tstForm.nombre.trim(),
+      detalle:   tstForm.detalle.trim() || null,
+      texto:     tstForm.texto.trim(),
+      estrellas: Number(tstForm.estrellas),
+      orden:     Number(tstForm.orden),
+      activo:    tstForm.activo,
+    }
+    if (!payload.nombre || !payload.texto) { setError("Nombre y texto son requeridos"); setSaving(false); return }
+
+    const esNuevo = tstModal === "nuevo"
+    const url     = esNuevo ? "/api/admin/testimonios" : `/api/admin/testimonios/${(tstModal as Testimonio).id}`
+    const method  = esNuevo ? "POST" : "PATCH"
+
+    const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+    const json = await res.json()
+    if (res.ok) {
+      if (esNuevo) setTestimonios((p) => [...p, json.data].sort((a, b) => a.orden - b.orden || a.id - b.id))
+      else         setTestimonios((p) => p.map((x) => x.id === (tstModal as Testimonio).id ? json.data : x))
+      setTstModal(null)
+    } else { setError(json.error ?? "Error al guardar") }
+    setSaving(false)
+  }
+
+  async function toggleTstActivo(t: Testimonio) {
+    setTstTogglingId(t.id)
+    const res = await fetch(`/api/admin/testimonios/${t.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ activo: !t.activo }),
+    })
+    if (res.ok) setTestimonios((p) => p.map((x) => x.id === t.id ? { ...x, activo: !t.activo } : x))
+    setTstTogglingId(null)
+  }
+
+  async function eliminarTst(t: Testimonio) {
+    if (!window.confirm(`¿Eliminar el testimonio de "${t.nombre}"?`)) return
+    setTstDeletingId(t.id)
+    const res = await fetch(`/api/admin/testimonios/${t.id}`, { method: "DELETE" })
+    if (res.ok) setTestimonios((p) => p.filter((x) => x.id !== t.id))
+    else { const j = await res.json(); setError(j.error ?? "Error al eliminar"); setTimeout(() => setError(""), 5000) }
+    setTstDeletingId(null)
   }
 
   /* ── Usuarios ──────────────────────────────── */
@@ -614,6 +690,96 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* ── TESTIMONIOS ──────────────────────────── */}
+      {tab === "testimonios" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs" style={{ color: "var(--subtle)" }}>
+                Testimonios visibles en la página principal · {testimonios.filter((t) => t.activo).length} activos
+              </p>
+            </div>
+            <Button size="sm" onClick={openNuevoTst}>
+              <Plus size={12} />Nuevo testimonio
+            </Button>
+          </div>
+
+          {tstLoading && <div className="text-center py-10 text-xs" style={{ color: "var(--subtle)" }}>Cargando...</div>}
+
+          {!tstLoading && testimonios.length === 0 && (
+            <div className="rounded-xl border border-dashed p-10 text-center" style={{ borderColor: "var(--border)" }}>
+              <p className="text-sm font-medium" style={{ color: "var(--muted)" }}>Sin testimonios</p>
+              <p className="text-xs mt-1" style={{ color: "var(--subtle)" }}>Agrega el primero para que aparezca en la landing page</p>
+            </div>
+          )}
+
+          {testimonios.length > 0 && (
+            <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)" }}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border)" }}>
+                    {["Orden", "Nombre", "Detalle", "Calificación", "Estado", ""].map((h, i) => (
+                      <th key={i} className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide"
+                        style={{ color: "var(--subtle)" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {testimonios.map((t) => (
+                    <tr key={t.id} className="border-t transition-colors"
+                      style={{ borderColor: "var(--border)", opacity: t.activo ? 1 : 0.55 }}>
+                      <td className="px-4 py-3 text-xs font-mono tabular-nums w-12" style={{ color: "var(--muted)" }}>{t.orden}</td>
+                      <td className="px-4 py-3">
+                        <div className="text-xs font-medium" style={{ color: "var(--text)" }}>{t.nombre}</div>
+                        <div className="text-xs mt-0.5 line-clamp-2 max-w-xs" style={{ color: "var(--subtle)" }}>{t.texto}</div>
+                      </td>
+                      <td className="px-4 py-3 text-xs" style={{ color: "var(--muted)" }}>{t.detalle ?? "—"}</td>
+                      <td className="px-4 py-3 text-sm" style={{ color: "#F59E0B" }}>
+                        {"★".repeat(t.estrellas)}{"☆".repeat(5 - t.estrellas)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                          style={{ background: t.activo ? "#ECFDF5" : "#F3F4F6", color: t.activo ? "#059669" : "#6B7280" }}>
+                          {t.activo ? "Visible" : "Oculto"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          <button onClick={() => openEditTst(t)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs transition-colors hover:bg-[var(--surface-2)]"
+                            style={{ color: "var(--muted)" }}>
+                            <Pencil size={11} />Editar
+                          </button>
+                          <button
+                            onClick={() => toggleTstActivo(t)}
+                            disabled={tstTogglingId === t.id}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs transition-colors hover:bg-[var(--surface-2)] disabled:opacity-40"
+                            style={{ color: t.activo ? "#D97706" : "#059669" }}>
+                            {t.activo ? <><EyeOff size={11} />Ocultar</> : <><Eye size={11} />Mostrar</>}
+                          </button>
+                          <button
+                            onClick={() => eliminarTst(t)}
+                            disabled={tstDeletingId === t.id}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs transition-colors disabled:opacity-40"
+                            style={{ color: "#DC2626" }}>
+                            <Trash2 size={11} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="rounded-lg p-3 text-xs" style={{ background: "#EFF6FF", color: "#1D4ED8", border: "1px solid #BFDBFE" }}>
+            <strong>Orden:</strong> número más bajo aparece primero en la landing.
+            Los testimonios <strong>ocultos</strong> no aparecen en la página pública pero se conservan en la base de datos.
+          </div>
+        </div>
+      )}
+
       {/* ── SISTEMA ──────────────────────────────── */}
       {tab === "sistema" && (
         <div className="rounded-xl border p-6 space-y-4" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
@@ -728,6 +894,85 @@ export default function AdminPage() {
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={() => setModalEditNivel(null)}>Cancelar</Button>
             <Button type="submit" loading={saving}>Guardar cambios</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ── Modal: Nuevo / Editar testimonio ─────── */}
+      <Modal
+        open={tstModal !== null}
+        onClose={() => setTstModal(null)}
+        title={tstModal === "nuevo" ? "Nuevo testimonio" : "Editar testimonio"}
+        size="sm">
+        <form onSubmit={guardarTst} className="space-y-4">
+          {error && (
+            <div className="p-2 rounded-lg text-xs" style={{ background: "#FEF2F2", color: "#DC2626" }}>{error}</div>
+          )}
+          <Input
+            label="Nombre del paciente *"
+            value={tstForm.nombre}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTstForm((f) => ({ ...f, nombre: e.target.value }))}
+            placeholder="Ej: María González"
+            required />
+          <Input
+            label="Detalle (procedimiento · aseguradora)"
+            value={tstForm.detalle}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTstForm((f) => ({ ...f, detalle: e.target.value }))}
+            placeholder="Ej: Colecistectomía • GNP Seguros" />
+
+          <div>
+            <label className="block text-xs font-medium mb-1" style={{ color: "var(--muted)" }}>
+              Texto del testimonio *
+            </label>
+            <textarea
+              value={tstForm.texto}
+              onChange={(e) => setTstForm((f) => ({ ...f, texto: e.target.value }))}
+              rows={4}
+              required
+              placeholder="Escribe aquí el testimonio del paciente..."
+              className="w-full px-3 py-2 text-xs rounded-lg border resize-none focus:outline-none focus:ring-2"
+              style={{
+                background: "var(--surface)",
+                borderColor: "var(--border)",
+                color: "var(--text)",
+              }} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium mb-1" style={{ color: "var(--muted)" }}>Calificación</label>
+              <Select
+                value={tstForm.estrellas}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setTstForm((f) => ({ ...f, estrellas: e.target.value }))}>
+                {[5,4,3,2,1].map((n) => (
+                  <option key={n} value={n}>{"★".repeat(n)} ({n})</option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1" style={{ color: "var(--muted)" }}>Orden</label>
+              <Input
+                type="number"
+                min="0"
+                value={tstForm.orden}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTstForm((f) => ({ ...f, orden: e.target.value }))} />
+            </div>
+          </div>
+
+          <label className="flex items-center gap-2 cursor-pointer select-none" style={{ color: "var(--muted)" }}>
+            <input
+              type="checkbox"
+              checked={tstForm.activo}
+              onChange={(e) => setTstForm((f) => ({ ...f, activo: e.target.checked }))}
+            />
+            <span className="text-xs">Visible en la landing page</span>
+          </label>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="secondary" onClick={() => setTstModal(null)}>Cancelar</Button>
+            <Button type="submit" loading={saving}>
+              {tstModal === "nuevo" ? "Crear testimonio" : "Guardar cambios"}
+            </Button>
           </div>
         </form>
       </Modal>
