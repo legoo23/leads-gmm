@@ -24,7 +24,7 @@ export default async function BienvenidaPage({
 
   if (!v || !v.activo) notFound()
 
-  const nivel = v.niveles_comision as { nombre: string; monto: number } | null
+  const nivel = (v.niveles_comision as unknown) as { nombre: string; monto: number } | null
 
   return (
     <BienvenidaClient

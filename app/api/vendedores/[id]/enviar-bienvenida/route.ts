@@ -29,7 +29,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
   if (error || !v) return NextResponse.json({ error: "Vendedor no encontrado" }, { status: 404 })
   if (!v.email)    return NextResponse.json({ error: "El vendedor no tiene email registrado" }, { status: 422 })
 
-  const nivel = v.niveles_comision as { nombre: string; monto: number } | null
+  const nivel = (v.niveles_comision as unknown) as { nombre: string; monto: number } | null
 
   await sendWelcomeVendedor({
     nombre:           v.nombre,
