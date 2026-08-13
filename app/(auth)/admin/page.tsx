@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
-import { Settings, Users, DollarSign, Plus, Pencil, Trash2, UserX, UserCheck } from "lucide-react"
+import { Settings, Users, DollarSign, Plus, Pencil, Trash2, UserX, UserCheck, BarChart2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Modal } from "@/components/ui/modal"
 import { Input, Select } from "@/components/ui/input"
@@ -13,7 +13,26 @@ interface UserProfile { id: string; nombre: string; email: string; rol: string; 
 const TABS = [
   { key: "usuarios", label: "Usuarios",             icon: Users },
   { key: "niveles",  label: "Niveles de comisión",  icon: DollarSign },
+  { key: "reportes", label: "Reportes",             icon: BarChart2 },
   { key: "sistema",  label: "Sistema",              icon: Settings },
+]
+
+const ETAPA_LABELS: Record<string, { label: string; color: string; bg: string }> = {
+  nuevo:                  { label: "Nuevo",               color: "#2563EB", bg: "#DBEAFE" },
+  contactado:             { label: "Contactado",           color: "#7C3AED", bg: "#EDE9FE" },
+  necesidad_identificada: { label: "Necesidad ID",         color: "#D97706", bg: "#FEF3C7" },
+  seguro_identificado:    { label: "Seguro ID",            color: "#0891B2", bg: "#CFFAFE" },
+  en_validacion:          { label: "En validación",        color: "#EA580C", bg: "#FFEDD5" },
+  viable:                 { label: "Viable",               color: "#16A34A", bg: "#DCFCE7" },
+  programado:             { label: "Programado",           color: "#0D9488", bg: "#CCFBF1" },
+  ganado:                 { label: "Ganado ✅",            color: "#059669", bg: "#ECFDF5" },
+  no_viable:              { label: "No viable",            color: "#DC2626", bg: "#FEE2E2" },
+  perdido:                { label: "Perdido",              color: "#6B7280", bg: "#F3F4F6" },
+}
+
+const PIPELINE_ORDER = [
+  "nuevo","contactado","necesidad_identificada","seguro_identificado",
+  "en_validacion","viable","programado","ganado","no_viable","perdido",
 ]
 
 const ROL_LABEL: Record<string, string> = {
@@ -41,6 +60,18 @@ export default function AdminPage() {
   const [togglingUsuario, setTogglingUsuario] = useState<string | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
+  /* ── Reportes ─────────────────────────────── */
+  interface LeadStats {
+    total: number; ganados: number; cerrados: number; activos: number
+    esta_semana: number; semana_pasada: number
+    por_etapa: Record<string, number>; por_fuente: Record<string, number>
+  }
+  interface ComisionItem { id: number; monto: number; estado: string }
+  const [rptLeads, setRptLeads]         = useState<LeadStats | null>(null)
+  const [rptComisiones, setRptComisiones] = useState<ComisionItem[]>([])
+  const [loadingRpt, setLoadingRpt]     = useState(false)
+  const [rptLoaded, setRptLoaded]       = useState(false)
+
   /* ── Modales ───────────────────────────────── */
   const [modalNuevoUsuario, setModalNuevoUsuario] = useState(false)
   const [modalEditRol,      setModalEditRol]      = useState<UserProfile | null>(null)
@@ -57,6 +88,22 @@ export default function AdminPage() {
     load()
     createClient().auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null))
   }, [])
+
+  useEffect(() => {
+    if (tab === "reportes" && !rptLoaded) loadReportes()
+  }, [tab]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function loadReportes() {
+    setLoadingRpt(true)
+    const [lr, cr] = await Promise.all([
+      fetch("/api/leads/stats").then((r) => r.json()).catch(() => null),
+      fetch("/api/comisiones?limit=1000").then((r) => r.json()).catch(() => ({ data: [] })),
+    ])
+    setRptLeads(lr ?? null)
+    setRptComisiones(cr.data ?? [])
+    setRptLoaded(true)
+    setLoadingRpt(false)
+  }
 
   async function load() {
     setLoading(true)
@@ -390,6 +437,180 @@ export default function AdminPage() {
               <p className="text-xs mt-1" style={{ color: "var(--subtle)" }}>Crea el primer nivel para comenzar a asignarlo a vendedores</p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── REPORTES ─────────────────────────────── */}
+      {tab === "reportes" && (
+        <div className="space-y-6">
+          {loadingRpt && (
+            <div className="text-center py-12 text-xs" style={{ color: "var(--subtle)" }}>Cargando reportes...</div>
+          )}
+
+          {!loadingRpt && rptLeads && (() => {
+            const tasa = rptLeads.cerrados > 0
+              ? ((rptLeads.ganados / rptLeads.cerrados) * 100).toFixed(1)
+              : "0.0"
+
+            const comPor = rptComisiones.reduce<Record<string, number>>((acc, c) => {
+              acc[c.estado] = (acc[c.estado] ?? 0) + Number(c.monto)
+              return acc
+            }, {})
+
+            const etapas = PIPELINE_ORDER.map((k) => ({ key: k, count: rptLeads.por_etapa[k] ?? 0 }))
+            const maxEtapa = Math.max(...etapas.map((e) => e.count), 1)
+
+            const fuentes = Object.entries(rptLeads.por_fuente)
+              .sort(([, a], [, b]) => b - a)
+              .map(([fuente, count]) => ({ fuente, count }))
+
+            return (
+              <>
+                {/* KPI tiles */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { label: "Total leads",    value: rptLeads.total,       color: "#2563EB", bg: "#EFF6FF" },
+                    { label: "Leads activos",  value: rptLeads.activos,     color: "#D97706", bg: "#FFFBEB" },
+                    { label: "Convertidos",    value: rptLeads.ganados,     color: "#059669", bg: "#ECFDF5" },
+                    { label: "Tasa de conv.",  value: `${tasa}%`,           color: "#7C3AED", bg: "#F5F3FF" },
+                  ].map(({ label, value, color, bg }) => (
+                    <div key={label} className="rounded-xl border p-4"
+                      style={{ background: bg, borderColor: "var(--border)" }}>
+                      <div className="text-2xl font-bold tabular-nums" style={{ color }}>{value}</div>
+                      <div className="text-xs mt-0.5" style={{ color }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  {/* Embudo por etapa */}
+                  <div className="rounded-xl border p-4 space-y-3"
+                    style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+                    <h3 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--subtle)" }}>
+                      Embudo por etapa
+                    </h3>
+                    <div className="space-y-2">
+                      {etapas.map(({ key, count }) => {
+                        const meta = ETAPA_LABELS[key]
+                        const pct  = (count / maxEtapa) * 100
+                        return (
+                          <div key={key} className="space-y-0.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs" style={{ color: "var(--text)" }}>
+                                {meta?.label ?? key}
+                              </span>
+                              <span className="text-xs font-semibold tabular-nums"
+                                style={{ color: meta?.color ?? "var(--muted)" }}>
+                                {count}
+                              </span>
+                            </div>
+                            <div className="h-1.5 rounded-full" style={{ background: "var(--surface-2)" }}>
+                              <div className="h-1.5 rounded-full transition-all duration-500"
+                                style={{
+                                  width: `${pct}%`,
+                                  background: meta?.color ?? "var(--accent)",
+                                  minWidth: count > 0 ? 4 : 0,
+                                }} />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Panel derecho: por fuente + comisiones */}
+                  <div className="space-y-4">
+                    {/* Por fuente */}
+                    <div className="rounded-xl border p-4 space-y-3"
+                      style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+                      <h3 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--subtle)" }}>
+                        Leads por fuente
+                      </h3>
+                      {fuentes.length === 0 ? (
+                        <p className="text-xs" style={{ color: "var(--subtle)" }}>Sin datos</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {fuentes.map(({ fuente, count }) => (
+                            <span key={fuente}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+                              style={{ background: "var(--surface-2)", color: "var(--muted)" }}>
+                              <span className="font-semibold" style={{ color: "var(--text)" }}>{count}</span>
+                              {fuente}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Comisiones resumen */}
+                    <div className="rounded-xl border p-4 space-y-3"
+                      style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+                      <h3 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--subtle)" }}>
+                        Comisiones ({rptComisiones.length} registros)
+                      </h3>
+                      <div className="space-y-2">
+                        {[
+                          { estado: "pendiente", label: "Pendientes",  color: "#D97706", bg: "#FFFBEB" },
+                          { estado: "aprobada",  label: "Aprobadas",   color: "#2563EB", bg: "#EFF6FF" },
+                          { estado: "pagada",    label: "Pagadas",     color: "#059669", bg: "#ECFDF5" },
+                          { estado: "cancelada", label: "Canceladas",  color: "#6B7280", bg: "#F3F4F6" },
+                        ].map(({ estado, label, color, bg }) => {
+                          const total = comPor[estado] ?? 0
+                          if (total === 0 && !rptComisiones.some((c) => c.estado === estado)) return null
+                          return (
+                            <div key={estado} className="flex items-center justify-between px-3 py-2 rounded-lg"
+                              style={{ background: bg }}>
+                              <span className="text-xs font-medium" style={{ color }}>{label}</span>
+                              <span className="text-xs font-bold tabular-nums" style={{ color }}>
+                                {total.toLocaleString("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 0 })}
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Semana vs semana */}
+                <div className="rounded-xl border p-4"
+                  style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+                  <div className="flex items-center gap-6">
+                    <div>
+                      <div className="text-xs" style={{ color: "var(--subtle)" }}>Esta semana</div>
+                      <div className="text-xl font-bold tabular-nums" style={{ color: "var(--text)" }}>
+                        {rptLeads.esta_semana}
+                      </div>
+                    </div>
+                    <div className="text-xl" style={{ color: "var(--border)" }}>vs</div>
+                    <div>
+                      <div className="text-xs" style={{ color: "var(--subtle)" }}>Semana pasada</div>
+                      <div className="text-xl font-bold tabular-nums" style={{ color: "var(--muted)" }}>
+                        {rptLeads.semana_pasada}
+                      </div>
+                    </div>
+                    {rptLeads.semana_pasada > 0 && (() => {
+                      const delta = rptLeads.esta_semana - rptLeads.semana_pasada
+                      const pct   = ((delta / rptLeads.semana_pasada) * 100).toFixed(0)
+                      const pos   = delta >= 0
+                      return (
+                        <div className="ml-auto px-3 py-1.5 rounded-lg text-sm font-bold"
+                          style={{ background: pos ? "#ECFDF5" : "#FEF2F2", color: pos ? "#059669" : "#DC2626" }}>
+                          {pos ? "+" : ""}{pct}%
+                        </div>
+                      )
+                    })()}
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <button onClick={loadReportes} className="text-xs" style={{ color: "var(--accent)" }}>
+                    Actualizar datos
+                  </button>
+                </div>
+              </>
+            )
+          })()}
         </div>
       )}
 
