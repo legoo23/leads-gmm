@@ -165,7 +165,7 @@ export async function sendWelcomeVendedor(v: VendedorEmailData): Promise<void> {
       {
         filename:   `QR-${v.codigo_unico}.png`,
         content:    qrBuffer.toString("base64"),
-        content_id: "qr-code",
+        contentId: "qr-code",
       },
     ],
   })
