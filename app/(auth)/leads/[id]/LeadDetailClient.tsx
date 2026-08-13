@@ -217,6 +217,48 @@ function emptyPoliza(): PolizaExcedente {
   }
 }
 
+/* ─── Estudio preoperatorio ──────────────────────────────────────── */
+interface EstudioPreop {
+  id?: number
+  nombre: string
+  tiene_fisico: "pendiente" | "si" | "digital" | "no"
+  _saving: boolean
+  _dirty: boolean
+}
+
+const ESTUDIOS_CATALOGO = [
+  "Biometría hemática completa (BHC)",
+  "Química sanguínea (QS)",
+  "Examen general de orina (EGO)",
+  "Tiempos de coagulación",
+  "Pruebas de función hepática",
+  "Electrocardiograma (ECG)",
+  "Radiografía de tórax",
+  "Ecocardiograma",
+  "Tomografía computada",
+  "Resonancia magnética (RM)",
+  "Ultrasonido abdominal",
+  "Endoscopía",
+  "Colonoscopía",
+  "Espirometría",
+  "Valoración preanestésica",
+  "Otro",
+]
+
+const FISICO_LABEL: Record<string, string> = {
+  pendiente: "Pendiente",
+  si:        "✓ Tiene original",
+  digital:   "Escaneado / digital",
+  no:        "No disponible",
+}
+
+const FISICO_STYLE: Record<string, { background: string; color: string }> = {
+  pendiente: { background: "#FEF9C3", color: "#92400E" },
+  si:        { background: "#ECFDF5", color: "#059669" },
+  digital:   { background: "#EFF6FF", color: "#2563EB" },
+  no:        { background: "#FEF2F2", color: "#DC2626" },
+}
+
 /* ─── Tipo resultado búsqueda médicos ────────────────────────────── */
 interface MedicoResult {
   id: number
@@ -248,6 +290,9 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
 
   // Pólizas excedentes
   const [polizasExcedentes, setPolizasExcedentes] = useState<PolizaExcedente[]>([])
+
+  // Estudios preoperatorios
+  const [estudios, setEstudios] = useState<EstudioPreop[]>([])
 
   // Búsqueda de médicos
   const [medicoQuery, setMedicoQuery] = useState("")
@@ -288,15 +333,29 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
     }
   }, [leadId])
 
+  const loadEstudios = useCallback(async () => {
+    const res = await fetch(`/api/leads/${leadId}/estudios-preop`)
+    const { data } = await res.json()
+    if (Array.isArray(data)) {
+      setEstudios(data.map((e: Record<string, unknown>) => ({
+        id: e.id as number,
+        nombre: String(e.nombre ?? ""),
+        tiene_fisico: (e.tiene_fisico as EstudioPreop["tiene_fisico"]) ?? "pendiente",
+        _saving: false,
+        _dirty: false,
+      })))
+    }
+  }, [leadId])
+
   useEffect(() => {
-    Promise.all([loadLead(), loadPolizasExcedentes()]).finally(() => setLoading(false))
+    Promise.all([loadLead(), loadPolizasExcedentes(), loadEstudios()]).finally(() => setLoading(false))
     fetch(`/api/leads/${leadId}/upload-token`)
       .then((r) => r.json())
       .then(({ data }) => {
         if (data) { setUploadLink(data.link ?? null); setUploadExpiry(data.expires_at ?? null) }
       })
       .catch(() => {})
-  }, [leadId, loadLead, loadPolizasExcedentes])
+  }, [leadId, loadLead, loadPolizasExcedentes, loadEstudios])
 
   const generateUploadLink = useCallback(async () => {
     setGeneratingLink(true)
@@ -359,6 +418,40 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
     setMedicoResults([])
     setShowManualEntry(false)
   }, [])
+
+  function updateEstudio(idx: number, field: keyof EstudioPreop, value: unknown) {
+    setEstudios((prev) => prev.map((e, i) => i === idx ? { ...e, [field]: value, _dirty: true } : e))
+  }
+
+  async function saveEstudio(idx: number) {
+    const e = estudios[idx]
+    if (!e.nombre.trim()) return
+    setEstudios((prev) => prev.map((x, i) => i === idx ? { ...x, _saving: true } : x))
+    const method = e.id ? "PATCH" : "POST"
+    const url = e.id
+      ? `/api/leads/${leadId}/estudios-preop/${e.id}`
+      : `/api/leads/${leadId}/estudios-preop`
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre: e.nombre, tiene_fisico: e.tiene_fisico }),
+    })
+    const { data } = await res.json()
+    if (data) {
+      setEstudios((prev) => prev.map((x, i) =>
+        i === idx ? { ...x, id: data.id, _saving: false, _dirty: false } : x
+      ))
+    } else {
+      setEstudios((prev) => prev.map((x, i) => i === idx ? { ...x, _saving: false } : x))
+    }
+  }
+
+  async function deleteEstudio(idx: number) {
+    const e = estudios[idx]
+    if (!e.id) { setEstudios((prev) => prev.filter((_, i) => i !== idx)); return }
+    await fetch(`/api/leads/${leadId}/estudios-preop/${e.id}`, { method: "DELETE" })
+    setEstudios((prev) => prev.filter((_, i) => i !== idx))
+  }
 
   function updatePoliza(idx: number, field: keyof PolizaExcedente, value: unknown) {
     setPolizasExcedentes((prev) => prev.map((p, i) => i === idx ? { ...p, [field]: value } : p))
@@ -682,13 +775,11 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                 </Select>
                 <Input label="Código CIE-9 / CPT" value={form.codigo_procedimiento ?? ""} onChange={set("codigo_procedimiento")} readOnly={ro} style={{ textTransform: "uppercase" }} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <Input label="Fecha tentativa deseada" type="date" value={form.fecha_tentativa ?? ""} onChange={set("fecha_tentativa")} readOnly={ro} />
-                <Input label="Fecha del diagnóstico" type="date" value={form.fecha_diagnostico ?? ""} onChange={set("fecha_diagnostico")} readOnly={ro} />
-              </div>
+              <Input label="Fecha tentativa deseada" type="date" value={form.fecha_tentativa ?? ""} onChange={set("fecha_tentativa")} readOnly={ro} />
               <Textarea label="Notas del procedimiento" value={form.notas_procedimiento ?? ""} onChange={set("notas_procedimiento")} rows={3} readOnly={ro} style={{ textTransform: "uppercase" }} />
 
               <SectionTitle>Padecimientos e Historia Clínica</SectionTitle>
+              <Input label="Fecha del diagnóstico" type="date" value={form.fecha_diagnostico ?? ""} onChange={set("fecha_diagnostico")} readOnly={ro} />
               <div className="grid grid-cols-2 gap-4">
                 <Input label="Diagnóstico principal" value={form.diagnostico_principal ?? ""} onChange={set("diagnostico_principal")} placeholder="ej: Colelitiasis, Hernia inguinal" readOnly={ro} style={{ textTransform: "uppercase" }} />
                 <Input label="Diagnósticos secundarios / comorbilidades" value={form.diagnosticos_secundarios ?? ""} onChange={set("diagnosticos_secundarios")} placeholder="Separados por coma" readOnly={ro} style={{ textTransform: "uppercase" }} />
@@ -698,6 +789,108 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                 <Input label="Descripción de cirugías previas" value={form.cirugias_previas_desc ?? ""} onChange={set("cirugias_previas_desc")} placeholder="Año, tipo de cirugía, hospital" readOnly={ro} style={{ textTransform: "uppercase" }} />
               )}
               <Textarea label="Notas clínicas adicionales" value={form.notas_clinicas ?? ""} onChange={set("notas_clinicas")} rows={3} readOnly={ro} style={{ textTransform: "uppercase" }} />
+
+              {/* ── ESTUDIOS PREOPERATORIOS ── */}
+              <div className="flex items-center justify-between pt-1 pb-2 border-b"
+                style={{ borderColor: "var(--border)" }}>
+                <h3 className="text-xs font-semibold uppercase tracking-wide"
+                  style={{ color: "var(--muted)" }}>
+                  Estudios Preoperatorios
+                </h3>
+                {!ro && (
+                  <button
+                    onClick={() => setEstudios((prev) => [
+                      ...prev,
+                      { nombre: "", tiene_fisico: "pendiente", _saving: false, _dirty: true },
+                    ])}
+                    className="flex items-center gap-1 h-7 px-3 rounded-lg text-xs font-medium"
+                    style={{ background: "var(--accent)", color: "#fff" }}
+                  >
+                    <Plus size={12} />
+                    Agregar estudio
+                  </button>
+                )}
+              </div>
+
+              {estudios.length === 0 && (
+                <p className="text-xs py-1" style={{ color: "var(--muted)" }}>
+                  Sin estudios registrados.{!ro && " Usa el botón + para agregar."}
+                </p>
+              )}
+
+              <div className="space-y-2">
+                {estudios.map((e, idx) => (
+                  <div key={e.id ?? `new-${idx}`}
+                    className="flex items-center gap-2 p-3 rounded-xl border"
+                    style={{ background: "var(--surface-2)", borderColor: "var(--border)" }}>
+
+                    {/* Nombre del estudio */}
+                    {ro ? (
+                      <span className="flex-1 text-sm font-medium truncate" style={{ color: "var(--text)" }}>
+                        {e.nombre}
+                      </span>
+                    ) : (
+                      <div className="flex-1 relative">
+                        <input
+                          list={`estudios-list-${idx}`}
+                          value={e.nombre}
+                          onChange={(ev) => updateEstudio(idx, "nombre", ev.target.value.toUpperCase())}
+                          placeholder="Nombre del estudio..."
+                          className="w-full h-8 px-3 rounded-lg border text-sm outline-none"
+                          style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)", textTransform: "uppercase" }}
+                        />
+                        <datalist id={`estudios-list-${idx}`}>
+                          {ESTUDIOS_CATALOGO.map((s) => <option key={s} value={s.toUpperCase()} />)}
+                        </datalist>
+                      </div>
+                    )}
+
+                    {/* Badge / select de física */}
+                    {ro ? (
+                      <span className="flex-shrink-0 text-xs px-2.5 py-1 rounded-full font-medium"
+                        style={FISICO_STYLE[e.tiene_fisico]}>
+                        {FISICO_LABEL[e.tiene_fisico]}
+                      </span>
+                    ) : (
+                      <select
+                        value={e.tiene_fisico}
+                        onChange={(ev) => updateEstudio(idx, "tiene_fisico", ev.target.value as EstudioPreop["tiene_fisico"])}
+                        className="h-8 px-2 rounded-lg border text-xs outline-none appearance-none flex-shrink-0"
+                        style={{
+                          ...FISICO_STYLE[e.tiene_fisico],
+                          borderColor: "var(--border)",
+                          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+                          backgroundRepeat: "no-repeat", backgroundPosition: "right 6px center",
+                          backgroundSize: "12px", paddingRight: "24px", minWidth: "140px",
+                        }}
+                      >
+                        <option value="pendiente">Pendiente</option>
+                        <option value="si">✓ Tiene original</option>
+                        <option value="digital">Escaneado / digital</option>
+                        <option value="no">No disponible</option>
+                      </select>
+                    )}
+
+                    {/* Botones de acción */}
+                    {!ro && (
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {(e._dirty || !e.id) && (
+                          <button onClick={() => saveEstudio(idx)} disabled={e._saving || !e.nombre.trim()}
+                            className="h-8 px-2.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1"
+                            style={{ background: "var(--accent)", color: "#fff", opacity: e._saving || !e.nombre.trim() ? 0.5 : 1 }}>
+                            {e._saving ? "..." : <Check size={12} />}
+                          </button>
+                        )}
+                        <button onClick={() => deleteEstudio(idx)}
+                          className="h-8 px-2 rounded-lg transition-colors hover:bg-red-50"
+                          style={{ color: "var(--muted)" }}>
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </>
           )}
 
