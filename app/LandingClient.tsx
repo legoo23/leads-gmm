@@ -102,7 +102,13 @@ const focusStyle = { "--tw-ring-color": VERDE } as React.CSSProperties
 
 // ── Main Component ──────────────────────────────────────────────────────────
 
-export default function LandingClient({ testimonios }: { testimonios: Testimonio[] }) {
+export default function LandingClient({
+  testimonios,
+  codigoRef,
+}: {
+  testimonios: Testimonio[]
+  codigoRef: string | null
+}) {
   const lista = testimonios.length > 0 ? testimonios : TESTIMONIOS_DEFAULT
   const [form, setForm] = useState({
     nombre: "", apellido_paterno: "", telefono: "",
@@ -143,10 +149,11 @@ export default function LandingClient({ testimonios }: { testimonios: Testimonio
     if (Object.keys(errs).length) { setErrors(errs); return }
 
     setLoading(true)
+    const body = codigoRef ? { ...form, codigo_referido: codigoRef } : form
     const res = await fetch("/api/contacto", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify(body),
     })
     if (res.ok) {
       setSubmitted(true)

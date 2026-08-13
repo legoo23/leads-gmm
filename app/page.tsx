@@ -16,7 +16,12 @@ export interface Testimonio {
   estrellas: number
 }
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ ref?: string }>
+}) {
+  const { ref } = await searchParams
   const svc = createServiceClient()
   const { data } = await svc
     .from("testimonios")
@@ -25,5 +30,10 @@ export default async function Home() {
     .order("orden", { ascending: true })
     .order("id",    { ascending: true })
 
-  return <LandingClient testimonios={(data ?? []) as Testimonio[]} />
+  return (
+    <LandingClient
+      testimonios={(data ?? []) as Testimonio[]}
+      codigoRef={ref ? ref.toUpperCase() : null}
+    />
+  )
 }

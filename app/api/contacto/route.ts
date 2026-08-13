@@ -52,23 +52,38 @@ export async function POST(req: NextRequest) {
   const svc = createServiceClient()
   const folio = generateFolio()
 
+  // Resolver vendedor si viene código de referido
+  const codigoRef = String(body.codigo_referido ?? "").trim().toUpperCase() || null
+  let idVendedor: number | null = null
+  if (codigoRef) {
+    const { data: v } = await svc
+      .from("vendedores")
+      .select("id")
+      .eq("codigo_unico", codigoRef)
+      .eq("activo", true)
+      .single()
+    if (v) idVendedor = v.id
+  }
+
   const { data, error } = await svc.from("leads").insert({
     folio,
     nombre,
-    apellido_paterno: String(body.apellido_paterno ?? "").trim().toUpperCase() || null,
-    telefono_enc:   encryptField(telefono),
-    telefono_hash:  hashField(telefono),
-    email_enc:      encryptField(email),
-    email_hash:     hashField(email),
-    estado_ciudad:  body.estado_ciudad  || null,
-    procedimiento:  body.procedimiento  || null,
-    id_aseguradora: idAseguradora,
-    notas:          notasLineas.length ? notasLineas.join("\n") : null,
-    fuente:         "formulario",
-    prioridad:      "media",
-    etapa:          "nuevo",
-    estado:         "activo",
-    en_cola_revision: false,
+    apellido_paterno:  String(body.apellido_paterno ?? "").trim().toUpperCase() || null,
+    telefono_enc:      encryptField(telefono),
+    telefono_hash:     hashField(telefono),
+    email_enc:         encryptField(email),
+    email_hash:        hashField(email),
+    estado_ciudad:     body.estado_ciudad  || null,
+    procedimiento:     body.procedimiento  || null,
+    id_aseguradora:    idAseguradora,
+    notas:             notasLineas.length ? notasLineas.join("\n") : null,
+    fuente:            idVendedor ? "qr" : "formulario",
+    codigo_referido:   codigoRef,
+    id_vendedor:       idVendedor,
+    prioridad:         "media",
+    etapa:             "nuevo",
+    estado:            "activo",
+    en_cola_revision:  false,
   }).select("folio").single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
