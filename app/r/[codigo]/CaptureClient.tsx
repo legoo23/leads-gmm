@@ -1,11 +1,12 @@
 "use client"
 import { useState } from "react"
-import { CheckCircle, Phone, User, Stethoscope, Shield, ChevronDown } from "lucide-react"
-import { ASEGURADORAS } from "@/constants/aseguradoras"
+import { CheckCircle, Phone, User, Stethoscope, Shield, ChevronDown, MessageCircle } from "lucide-react"
 import { PROCEDIMIENTOS } from "@/constants/procedimientos"
 import { GEO_ESTADOS } from "@/constants/geo-mx"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function Field({ label, required, error, children }: {
   label: string; required?: boolean; error?: string; children: React.ReactNode
@@ -31,6 +32,12 @@ const inputBase: React.CSSProperties = {
   color: "var(--text)",
   fontSize: 14,
   outline: "none",
+  textTransform: "uppercase",
+}
+
+const inputBaseNoUpper: React.CSSProperties = {
+  ...inputBase,
+  textTransform: "none",
 }
 
 const selectBase: React.CSSProperties = {
@@ -39,6 +46,7 @@ const selectBase: React.CSSProperties = {
   WebkitAppearance: "none",
   cursor: "pointer",
   paddingRight: 36,
+  textTransform: "none",
 }
 
 // ── Grupos de procedimientos para el select ───────────────────────────────────
@@ -49,15 +57,19 @@ for (const p of PROCEDIMIENTOS) {
   ;(GRUPOS[p.categoria] ??= []).push({ ...p })
 }
 
+// ── Tipos ─────────────────────────────────────────────────────────────────────
+
+interface Aseguradora { id: number; nombre: string }
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function CaptureClient({
-  codigo, vendedorNombre,
-}: { codigo: string; vendedorNombre: string }) {
-  const [done, setDone]       = useState<string | null>(null)
-  const [saving, setSaving]   = useState(false)
-  const [errors, setErrors]   = useState<Record<string, string>>({})
-  const [tieneSeguro, setTieneSeguro] = useState<boolean | null>(null)
+  codigo, vendedorNombre, aseguradoras,
+}: { codigo: string; vendedorNombre: string; aseguradoras: Aseguradora[] }) {
+  const [done, setDone]           = useState<string | null>(null)
+  const [saving, setSaving]       = useState(false)
+  const [errors, setErrors]       = useState<Record<string, string>>({})
+  const [privacidad, setPrivacidad] = useState(false)
 
   const [form, setForm] = useState({
     nombre: "", apellido_paterno: "", apellido_materno: "",
@@ -65,7 +77,13 @@ export default function CaptureClient({
     estado_ciudad: "", procedimiento: "", id_aseguradora: "", notas: "",
   })
 
-  const set = (k: keyof typeof form) =>
+  const setUpper = (k: keyof typeof form) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      setForm((f) => ({ ...f, [k]: e.target.value.toUpperCase() }))
+      setErrors((prev) => { const n = { ...prev }; delete n[k]; return n })
+    }
+
+  const setRaw = (k: keyof typeof form) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
       setForm((f) => ({ ...f, [k]: e.target.value }))
       setErrors((prev) => { const n = { ...prev }; delete n[k]; return n })
@@ -73,9 +91,13 @@ export default function CaptureClient({
 
   function validate() {
     const e: Record<string, string> = {}
-    if (!form.nombre.trim()) e.nombre = "El nombre es requerido"
+    if (!form.nombre.trim())          e.nombre = "El nombre es requerido"
+    if (!form.apellido_paterno.trim()) e.apellido_paterno = "El apellido paterno es requerido"
     const digits = form.telefono.replace(/\D/g, "")
-    if (digits.length !== 10) e.telefono = "Debe tener exactamente 10 dígitos"
+    if (digits.length !== 10)         e.telefono = "Debe tener exactamente 10 dígitos"
+    if (form.email && !EMAIL_RE.test(form.email.trim()))
+                                      e.email = "Ingresa un correo electrónico válido"
+    if (!privacidad)                  e.privacidad = "Debes aceptar el Aviso de Privacidad"
     return e
   }
 
@@ -92,11 +114,9 @@ export default function CaptureClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...form,
+        email: form.email.trim().toLowerCase() || null,
         id_aseguradora: form.id_aseguradora ? parseInt(form.id_aseguradora) : null,
-        notas: [
-          form.notas,
-          tieneSeguro === false ? "Paciente indicó NO tener seguro GMM actualmente." : "",
-        ].filter(Boolean).join("\n") || null,
+        acepta_privacidad: true,
       }),
     })
 
@@ -115,21 +135,33 @@ export default function CaptureClient({
     return (
       <div className="min-h-dvh flex flex-col items-center justify-center px-4 py-12"
         style={{ background: "var(--bg)" }}>
-        <div className="w-full max-w-sm text-center space-y-5">
-          <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto"
-            style={{ background: "#ECFDF5", border: "3px solid #A7F3D0" }}>
-            <CheckCircle size={36} style={{ color: "#059669" }} />
+        <div className="w-full max-w-sm space-y-5">
+          <div className="text-center space-y-4">
+            <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto"
+              style={{ background: "#ECFDF5", border: "3px solid #A7F3D0" }}>
+              <CheckCircle size={36} style={{ color: "#059669" }} />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-2xl font-bold" style={{ color: "var(--text)" }}>
+                ¡Gestión iniciada con éxito!
+              </h1>
+              <div className="rounded-2xl border p-4 text-left space-y-2"
+                style={{ background: "#F0FDF4", borderColor: "#A7F3D0" }}>
+                <div className="flex items-start gap-2.5">
+                  <MessageCircle size={16} style={{ color: "#059669", flexShrink: 0, marginTop: 1 }} />
+                  <p className="text-sm leading-relaxed" style={{ color: "#065F46" }}>
+                    Un asesor médico certificado te contactará por <strong>WhatsApp</strong>.
+                  </p>
+                </div>
+              </div>
+              <p className="text-sm leading-relaxed px-2" style={{ color: "var(--muted)" }}>
+                Al contactarte, solicitaremos tu póliza de Gastos Médicos Mayores
+                para mayor análisis.
+              </p>
+            </div>
           </div>
-          <div className="space-y-2">
-            <h1 className="text-2xl font-bold" style={{ color: "var(--text)" }}>
-              ¡Solicitud enviada!
-            </h1>
-            <p className="text-sm leading-relaxed" style={{ color: "var(--muted)" }}>
-              Un asesor especializado en procedimientos quirúrgicos con seguro GMM
-              te contactará en las próximas <strong>2 horas</strong>.
-            </p>
-          </div>
-          <div className="rounded-2xl border p-4 text-left space-y-2"
+
+          <div className="rounded-2xl border p-4 space-y-1"
             style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
             <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--subtle)" }}>
               Folio de seguimiento
@@ -139,9 +171,10 @@ export default function CaptureClient({
               Guarda este número para dar seguimiento a tu caso.
             </p>
           </div>
+
           <div className="flex items-center justify-center gap-2 text-xs" style={{ color: "var(--subtle)" }}>
             <Shield size={12} />
-            Tus datos están protegidos con cifrado AES-256
+            Tu información está protegida con cifrado AES-256
           </div>
         </div>
       </div>
@@ -170,15 +203,22 @@ export default function CaptureClient({
 
       <div className="px-4 py-5 max-w-lg mx-auto space-y-5 pb-10">
         {/* Intro */}
-        <div className="rounded-2xl p-4 space-y-1"
+        <div className="rounded-2xl p-4 space-y-3"
           style={{ background: "#EFF6FF", border: "1px solid #BFDBFE" }}>
-          <p className="text-sm font-semibold" style={{ color: "#1D4ED8" }}>
-            Verifica tu cobertura sin costo
-          </p>
-          <p className="text-xs leading-relaxed" style={{ color: "#3B82F6" }}>
-            Completa tus datos y te contactaremos para revisar si tu seguro GMM cubre
-            el procedimiento que necesitas.
-          </p>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: "#2563EB" }}>
+              <Shield size={15} color="white" />
+            </div>
+            <p className="text-sm font-bold" style={{ color: "#1D4ED8" }}>
+              Verificar mi cobertura gratis
+            </p>
+          </div>
+          <div className="space-y-1 text-xs" style={{ color: "#3B82F6" }}>
+            <p>✓ No vendemos seguros. Validamos el que ya tienes pagado.</p>
+            <p>✓ Cero spam.</p>
+            <p>✓ Tu información está protegida con cifrado AES-256.</p>
+          </div>
         </div>
 
         {errors._global && (
@@ -199,22 +239,25 @@ export default function CaptureClient({
               </span>
             </div>
 
-            <Field label="Nombre" required error={errors.nombre}>
+            <Field label="Nombre(s)" required error={errors.nombre}>
               <input
-                value={form.nombre} onChange={set("nombre")}
-                placeholder="Tu nombre completo"
+                value={form.nombre} onChange={setUpper("nombre")}
+                placeholder="TU NOMBRE"
+                autoCapitalize="characters"
                 style={{ ...inputBase, borderColor: errors.nombre ? "var(--negative)" : "var(--border)" }}
               />
             </Field>
 
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Apellido paterno">
-                <input value={form.apellido_paterno} onChange={set("apellido_paterno")}
-                  placeholder="García" style={inputBase} />
+              <Field label="Apellido paterno" required error={errors.apellido_paterno}>
+                <input value={form.apellido_paterno} onChange={setUpper("apellido_paterno")}
+                  placeholder="GARCÍA" autoCapitalize="characters"
+                  style={{ ...inputBase, borderColor: errors.apellido_paterno ? "var(--negative)" : "var(--border)" }} />
               </Field>
               <Field label="Apellido materno">
-                <input value={form.apellido_materno} onChange={set("apellido_materno")}
-                  placeholder="López" style={inputBase} />
+                <input value={form.apellido_materno} onChange={setUpper("apellido_materno")}
+                  placeholder="LÓPEZ" autoCapitalize="characters"
+                  style={inputBase} />
               </Field>
             </div>
           </section>
@@ -231,20 +274,21 @@ export default function CaptureClient({
 
             <Field label="Teléfono celular" required error={errors.telefono}>
               <input
-                value={form.telefono} onChange={set("telefono")}
+                value={form.telefono} onChange={setRaw("telefono")}
                 placeholder="5512345678" inputMode="numeric" maxLength={10}
-                style={{ ...inputBase, borderColor: errors.telefono ? "var(--negative)" : "var(--border)" }}
+                style={{ ...inputBaseNoUpper, borderColor: errors.telefono ? "var(--negative)" : "var(--border)" }}
               />
             </Field>
 
-            <Field label="Correo electrónico (opcional)">
-              <input type="email" value={form.email} onChange={set("email")}
-                placeholder="tucorreo@email.com" style={inputBase} />
+            <Field label="Correo electrónico" error={errors.email}>
+              <input type="email" value={form.email} onChange={setRaw("email")}
+                placeholder="tucorreo@email.com"
+                style={{ ...inputBaseNoUpper, borderColor: errors.email ? "var(--negative)" : "var(--border)" }} />
             </Field>
 
             <Field label="Estado / Ciudad">
               <div className="relative">
-                <select value={form.estado_ciudad} onChange={set("estado_ciudad")} style={selectBase}>
+                <select value={form.estado_ciudad} onChange={setRaw("estado_ciudad")} style={selectBase}>
                   <option value="">— ¿Dónde vives? —</option>
                   {GEO_ESTADOS.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
@@ -254,19 +298,19 @@ export default function CaptureClient({
             </Field>
           </section>
 
-          {/* ── Procedimiento ── */}
+          {/* ── Procedimiento y seguro ── */}
           <section className="rounded-2xl border p-4 space-y-4"
             style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
             <div className="flex items-center gap-2 pb-1 border-b" style={{ borderColor: "var(--border)" }}>
               <Stethoscope size={14} style={{ color: "var(--accent)" }} />
               <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>
-                Procedimiento
+                Procedimiento y seguro
               </span>
             </div>
 
             <Field label="¿Qué cirugía o procedimiento necesitas?">
               <div className="relative">
-                <select value={form.procedimiento} onChange={set("procedimiento")} style={selectBase}>
+                <select value={form.procedimiento} onChange={setRaw("procedimiento")} style={selectBase}>
                   <option value="">— Selecciona una opción —</option>
                   {Object.entries(GRUPOS).map(([cat, procs]) => (
                     <optgroup key={cat} label={cat}>
@@ -282,41 +326,23 @@ export default function CaptureClient({
               </div>
             </Field>
 
-            {/* ¿Tiene seguro GMM? */}
-            <Field label="¿Tienes seguro de Gastos Médicos Mayores (GMM) vigente?">
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { v: true,  label: "Sí, tengo seguro",   color: "#059669", bg: tieneSeguro === true  ? "#ECFDF5" : "var(--surface-2)", border: tieneSeguro === true  ? "#A7F3D0" : "var(--border)" },
-                  { v: false, label: "No tengo seguro",    color: "#DC2626", bg: tieneSeguro === false ? "#FEF2F2" : "var(--surface-2)", border: tieneSeguro === false ? "#FECACA" : "var(--border)" },
-                ].map(({ v, label, color, bg, border }) => (
-                  <button key={String(v)} type="button"
-                    onClick={() => setTieneSeguro(v)}
-                    className="py-3 px-4 rounded-xl border text-xs font-semibold transition-colors text-center"
-                    style={{ background: bg, borderColor: border, color }}>
-                    {label}
-                  </button>
-                ))}
+            <Field label="Aseguradora GMM">
+              <div className="relative">
+                <select value={form.id_aseguradora} onChange={setRaw("id_aseguradora")} style={selectBase}>
+                  <option value="">— Selecciona tu aseguradora —</option>
+                  {aseguradoras.map((a) => (
+                    <option key={a.id} value={a.id}>{a.nombre}</option>
+                  ))}
+                  <option value="0">Otra / No la encuentro</option>
+                </select>
+                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                  style={{ color: "var(--muted)" }} />
               </div>
             </Field>
 
-            {tieneSeguro && (
-              <Field label="¿Con qué aseguradora?">
-                <div className="relative">
-                  <select value={form.id_aseguradora} onChange={set("id_aseguradora")} style={selectBase}>
-                    <option value="">— Selecciona tu aseguradora —</option>
-                    {ASEGURADORAS.map((a) => (
-                      <option key={a.id} value={a.id}>{a.nombre}</option>
-                    ))}
-                    <option value="0">Otra aseguradora</option>
-                  </select>
-                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                    style={{ color: "var(--muted)" }} />
-                </div>
-              </Field>
-            )}
-
             <Field label="Comentarios adicionales (opcional)">
-              <textarea value={form.notas} onChange={set("notas")} rows={2}
+              <textarea value={form.notas} onChange={setUpper("notas")} rows={2}
+                autoCapitalize="characters"
                 placeholder="¿Tiene médico tratante? ¿Cuándo requiere la cirugía? Cualquier dato adicional..."
                 style={{
                   ...inputBase, height: "auto", padding: "10px 12px",
@@ -324,6 +350,39 @@ export default function CaptureClient({
                 }} />
             </Field>
           </section>
+
+          {/* ── Aviso de privacidad ── */}
+          <div className="rounded-2xl border p-4"
+            style={{
+              background: errors.privacidad ? "var(--negative-bg)" : "var(--surface)",
+              borderColor: errors.privacidad ? "var(--negative)" : "var(--border)",
+            }}>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={privacidad}
+                onChange={(e) => {
+                  setPrivacidad(e.target.checked)
+                  if (e.target.checked) setErrors((p) => { const n = { ...p }; delete n.privacidad; return n })
+                }}
+                className="mt-0.5 flex-shrink-0"
+                style={{ width: 16, height: 16, accentColor: "var(--accent)", cursor: "pointer" }}
+              />
+              <span className="text-xs leading-relaxed" style={{ color: errors.privacidad ? "var(--negative)" : "var(--muted)" }}>
+                He leído y acepto el{" "}
+                <a href="/privacidad" target="_blank" rel="noopener noreferrer"
+                  className="underline font-semibold" style={{ color: "var(--accent)" }}>
+                  Aviso de Privacidad
+                </a>{" "}
+                y autorizo expresamente el tratamiento de mis datos personales y de salud
+                (datos sensibles) para los fines descritos en el mismo.
+                <span className="ml-0.5" style={{ color: "var(--negative)" }}>*</span>
+              </span>
+            </label>
+            {errors.privacidad && (
+              <p className="text-xs mt-2 ml-7" style={{ color: "var(--negative)" }}>{errors.privacidad}</p>
+            )}
+          </div>
 
           {/* Submit */}
           <button type="submit" disabled={saving}
@@ -333,13 +392,28 @@ export default function CaptureClient({
               opacity: saving ? 0.7 : 1,
               boxShadow: "0 4px 14px rgba(37,99,235,0.35)",
             }}>
-            {saving ? "Enviando..." : "Solicitar información gratuita →"}
+            {saving ? "Enviando..." : "Verificar mi cobertura gratis →"}
           </button>
 
-          <p className="text-xs text-center leading-relaxed" style={{ color: "var(--subtle)" }}>
-            Al enviar autorizas que un asesor te contacte para verificar tu cobertura.
-            <br />Tu información está protegida con cifrado AES-256.
-          </p>
+          {/* Trust */}
+          <div className="rounded-xl p-3 space-y-1.5 text-xs text-center"
+            style={{ background: "var(--surface-2)", color: "var(--muted)" }}>
+            <p>🔒 No vendemos seguros. Validamos el que ya tienes pagado.</p>
+            <p>📵 Cero spam · Tu información está protegida con cifrado AES-256.</p>
+          </div>
+
+          {/* Links legales */}
+          <div className="flex items-center justify-center gap-4 text-xs" style={{ color: "var(--subtle)" }}>
+            <a href="/privacidad" target="_blank" rel="noopener noreferrer"
+              className="underline hover:opacity-70 transition-opacity">
+              Aviso de privacidad
+            </a>
+            <span>·</span>
+            <a href="/terminos" target="_blank" rel="noopener noreferrer"
+              className="underline hover:opacity-70 transition-opacity">
+              Términos y condiciones
+            </a>
+          </div>
         </form>
       </div>
     </div>

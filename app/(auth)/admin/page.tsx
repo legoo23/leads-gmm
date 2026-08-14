@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
-import { Settings, Users, DollarSign, Plus, Pencil, Trash2, UserX, UserCheck, BarChart2, Star, Eye, EyeOff } from "lucide-react"
+import { Settings, Users, DollarSign, Plus, Pencil, Trash2, UserX, UserCheck, BarChart2, Star, Eye, EyeOff, Building2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Modal } from "@/components/ui/modal"
 import { Input, Select } from "@/components/ui/input"
@@ -9,13 +9,15 @@ import { createClient } from "@/lib/supabase/client"
 
 interface Nivel { id: number; nombre: string; monto: number; descripcion: string | null; activo: boolean; orden: number }
 interface UserProfile { id: string; nombre: string; email: string; rol: string; activo: boolean }
+interface Aseguradora { id: number; nombre: string; nombre_corto: string | null; activo: boolean }
 
 const TABS = [
-  { key: "usuarios",    label: "Usuarios",             icon: Users },
-  { key: "niveles",     label: "Niveles de comisión",  icon: DollarSign },
-  { key: "reportes",    label: "Reportes",             icon: BarChart2 },
-  { key: "testimonios", label: "Testimonios",          icon: Star },
-  { key: "sistema",     label: "Sistema",              icon: Settings },
+  { key: "usuarios",      label: "Usuarios",             icon: Users },
+  { key: "niveles",       label: "Niveles de comisión",  icon: DollarSign },
+  { key: "aseguradoras",  label: "Aseguradoras",         icon: Building2 },
+  { key: "reportes",      label: "Reportes",             icon: BarChart2 },
+  { key: "testimonios",   label: "Testimonios",          icon: Star },
+  { key: "sistema",       label: "Sistema",              icon: Settings },
 ]
 
 const ETAPA_LABELS: Record<string, { label: string; color: string; bg: string }> = {
@@ -83,6 +85,14 @@ export default function AdminPage() {
   const [tstTogglingId,  setTstTogglingId]  = useState<number | null>(null)
   const [tstDeletingId,  setTstDeletingId]  = useState<number | null>(null)
 
+  /* ── Aseguradoras ─────────────────────────── */
+  const [aseguradoras,      setAseguradoras]      = useState<Aseguradora[]>([])
+  const [asgLoaded,         setAsgLoaded]         = useState(false)
+  const [asgLoading,        setAsgLoading]        = useState(false)
+  const [asgModal,          setAsgModal]          = useState<"nuevo" | Aseguradora | null>(null)
+  const [asgForm,           setAsgForm]           = useState({ nombre: "", nombre_corto: "" })
+  const [asgTogglingId,     setAsgTogglingId]     = useState<number | null>(null)
+
   /* ── Modales ───────────────────────────────── */
   const [modalNuevoUsuario, setModalNuevoUsuario] = useState(false)
   const [modalEditRol,      setModalEditRol]      = useState<UserProfile | null>(null)
@@ -101,9 +111,61 @@ export default function AdminPage() {
   }, [])
 
   useEffect(() => {
-    if (tab === "reportes"    && !rptLoaded) loadReportes()
-    if (tab === "testimonios" && !tstLoaded) loadTestimonios()
+    if (tab === "reportes"      && !rptLoaded) loadReportes()
+    if (tab === "testimonios"   && !tstLoaded) loadTestimonios()
+    if (tab === "aseguradoras"  && !asgLoaded) loadAseguradoras()
   }, [tab]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ── Aseguradoras ──────────────────────────── */
+  async function loadAseguradoras() {
+    setAsgLoading(true)
+    const r = await fetch("/api/admin/aseguradoras").then((x) => x.json()).catch(() => ({ data: [] }))
+    setAseguradoras(r.data ?? [])
+    setAsgLoaded(true)
+    setAsgLoading(false)
+  }
+
+  function openNuevaAsg() {
+    setAsgForm({ nombre: "", nombre_corto: "" })
+    setError(""); setAsgModal("nuevo")
+  }
+
+  function openEditAsg(a: Aseguradora) {
+    setAsgForm({ nombre: a.nombre, nombre_corto: a.nombre_corto ?? "" })
+    setError(""); setAsgModal(a)
+  }
+
+  async function guardarAsg(e: React.FormEvent) {
+    e.preventDefault(); setSaving(true); setError("")
+    const nombre = asgForm.nombre.trim().toUpperCase()
+    if (!nombre) { setError("El nombre es requerido"); setSaving(false); return }
+
+    const esNueva = asgModal === "nuevo"
+    const url     = esNueva ? "/api/admin/aseguradoras" : `/api/admin/aseguradoras/${(asgModal as Aseguradora).id}`
+    const method  = esNueva ? "POST" : "PATCH"
+
+    const res = await fetch(url, {
+      method, headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre, nombre_corto: asgForm.nombre_corto.trim().toUpperCase() || null }),
+    })
+    const json = await res.json()
+    if (res.ok) {
+      if (esNueva) setAseguradoras((p) => [...p, json.data].sort((a, b) => a.nombre.localeCompare(b.nombre)))
+      else         setAseguradoras((p) => p.map((x) => x.id === (asgModal as Aseguradora).id ? json.data : x))
+      setAsgModal(null)
+    } else { setError(json.error ?? "Error al guardar") }
+    setSaving(false)
+  }
+
+  async function toggleAsgActivo(a: Aseguradora) {
+    setAsgTogglingId(a.id)
+    const res = await fetch(`/api/admin/aseguradoras/${a.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ activo: !a.activo }),
+    })
+    if (res.ok) setAseguradoras((p) => p.map((x) => x.id === a.id ? { ...x, activo: !a.activo } : x))
+    setAsgTogglingId(null)
+  }
 
   async function loadReportes() {
     setLoadingRpt(true)
@@ -516,6 +578,80 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* ── ASEGURADORAS ─────────────────────────── */}
+      {tab === "aseguradoras" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs" style={{ color: "var(--subtle)" }}>
+              {aseguradoras.filter((a) => a.activo).length} activas · {aseguradoras.length} total
+            </p>
+            <Button size="sm" onClick={openNuevaAsg}>
+              <Plus size={12} />Nueva aseguradora
+            </Button>
+          </div>
+
+          {asgLoading && <div className="text-center py-10 text-xs" style={{ color: "var(--subtle)" }}>Cargando...</div>}
+
+          {!asgLoading && aseguradoras.length === 0 && (
+            <div className="rounded-xl border border-dashed p-10 text-center" style={{ borderColor: "var(--border)" }}>
+              <p className="text-sm font-medium" style={{ color: "var(--muted)" }}>Sin aseguradoras registradas</p>
+              <p className="text-xs mt-1" style={{ color: "var(--subtle)" }}>Agrega las aseguradoras GMM que manejará el sistema</p>
+            </div>
+          )}
+
+          {aseguradoras.length > 0 && (
+            <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)" }}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border)" }}>
+                    {["Nombre", "Nombre corto", "Estado", ""].map((h, i) => (
+                      <th key={i} className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide"
+                        style={{ color: "var(--subtle)" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {aseguradoras.map((a) => (
+                    <tr key={a.id} className="border-t transition-colors"
+                      style={{ borderColor: "var(--border)", opacity: a.activo ? 1 : 0.55 }}>
+                      <td className="px-4 py-3 text-xs font-medium" style={{ color: "var(--text)" }}>{a.nombre}</td>
+                      <td className="px-4 py-3 text-xs" style={{ color: "var(--muted)" }}>{a.nombre_corto ?? "—"}</td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                          style={{ background: a.activo ? "#ECFDF5" : "#F3F4F6", color: a.activo ? "#059669" : "#6B7280" }}>
+                          {a.activo ? "Activa" : "Inactiva"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          <button onClick={() => openEditAsg(a)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs transition-colors hover:bg-[var(--surface-2)]"
+                            style={{ color: "var(--muted)" }}>
+                            <Pencil size={11} />Editar
+                          </button>
+                          <button
+                            onClick={() => toggleAsgActivo(a)}
+                            disabled={asgTogglingId === a.id}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs transition-colors hover:bg-[var(--surface-2)] disabled:opacity-40"
+                            style={{ color: a.activo ? "#D97706" : "#059669" }}>
+                            {a.activo ? <><EyeOff size={11} />Desactivar</> : <><Eye size={11} />Activar</>}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="rounded-lg p-3 text-xs" style={{ background: "#EFF6FF", color: "#1D4ED8", border: "1px solid #BFDBFE" }}>
+            Las aseguradoras activas aparecen en el formulario de captura del QR.
+            Las inactivas se conservan en el historial de leads pero no se muestran a nuevos prospectos.
+          </div>
+        </div>
+      )}
+
       {/* ── REPORTES ─────────────────────────────── */}
       {tab === "reportes" && (
         <div className="space-y-6">
@@ -894,6 +1030,36 @@ export default function AdminPage() {
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={() => setModalEditNivel(null)}>Cancelar</Button>
             <Button type="submit" loading={saving}>Guardar cambios</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ── Modal: Nueva / Editar aseguradora ───── */}
+      <Modal
+        open={asgModal !== null}
+        onClose={() => setAsgModal(null)}
+        title={asgModal === "nuevo" ? "Nueva aseguradora" : "Editar aseguradora"}
+        size="sm">
+        <form onSubmit={guardarAsg} className="space-y-4">
+          {error && (
+            <div className="p-2 rounded-lg text-xs" style={{ background: "#FEF2F2", color: "#DC2626" }}>{error}</div>
+          )}
+          <Input
+            label="Nombre completo *"
+            value={asgForm.nombre}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAsgForm((f) => ({ ...f, nombre: e.target.value.toUpperCase() }))}
+            placeholder="Ej: GNP SEGUROS"
+            required />
+          <Input
+            label="Nombre corto (opcional)"
+            value={asgForm.nombre_corto}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAsgForm((f) => ({ ...f, nombre_corto: e.target.value.toUpperCase() }))}
+            placeholder="Ej: GNP" />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="secondary" onClick={() => setAsgModal(null)}>Cancelar</Button>
+            <Button type="submit" loading={saving}>
+              {asgModal === "nuevo" ? "Crear aseguradora" : "Guardar cambios"}
+            </Button>
           </div>
         </form>
       </Modal>

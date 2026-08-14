@@ -4,6 +4,8 @@ import { assertLicense } from "@/lib/license"
 import { encryptField, hashField } from "@/lib/crypto"
 import { normalizePhone, normalizeEmail, generateFolio } from "@/lib/utils"
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ codigo: string }> }
@@ -13,7 +15,6 @@ export async function POST(
   const { codigo } = await params
   const svc = createServiceClient()
 
-  // Validar que el código de vendedor exista y esté activo
   const { data: vendedor, error: vError } = await svc
     .from("vendedores")
     .select("id, nombre, activo")
@@ -28,47 +29,50 @@ export async function POST(
   try { body = await req.json() }
   catch { return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 }) }
 
-  // Validaciones de campos obligatorios
   const nombre = String(body.nombre ?? "").trim().toUpperCase()
-  if (!nombre) {
-    return NextResponse.json({ error: "El nombre es requerido" }, { status: 400 })
-  }
+  if (!nombre) return NextResponse.json({ error: "El nombre es requerido" }, { status: 400 })
+
+  const apellidoPaterno = String(body.apellido_paterno ?? "").trim().toUpperCase()
+  if (!apellidoPaterno) return NextResponse.json({ error: "El apellido paterno es requerido" }, { status: 400 })
 
   const telefono = normalizePhone(body.telefono)
   if (!telefono) {
-    return NextResponse.json(
-      { error: "El teléfono debe tener exactamente 10 dígitos" },
-      { status: 400 }
-    )
+    return NextResponse.json({ error: "El teléfono debe tener exactamente 10 dígitos" }, { status: 400 })
+  }
+
+  const emailRaw = normalizeEmail(body.email)
+  if (emailRaw && !EMAIL_RE.test(emailRaw)) {
+    return NextResponse.json({ error: "El correo electrónico no es válido" }, { status: 400 })
+  }
+
+  if (!body.acepta_privacidad) {
+    return NextResponse.json({ error: "Debes aceptar el Aviso de Privacidad para continuar" }, { status: 400 })
   }
 
   const folio = generateFolio()
 
-  const emailNorm = normalizeEmail(body.email)
   const { data, error } = await svc.from("leads").insert({
     folio,
     nombre,
-    apellido_paterno: String(body.apellido_paterno ?? "").trim().toUpperCase() || null,
-    apellido_materno: String(body.apellido_materno ?? "").trim().toUpperCase() || null,
-    telefono_enc:    encryptField(telefono),
-    telefono_hash:   hashField(telefono),
-    ...(emailNorm ? { email_enc: encryptField(emailNorm), email_hash: hashField(emailNorm) } : {}),
-    estado_ciudad:   body.estado_ciudad  || null,
-    procedimiento:   body.procedimiento  || null,
-    id_aseguradora:  body.id_aseguradora ? parseInt(String(body.id_aseguradora)) : null,
-    notas:           body.notas          || null,
-    codigo_referido: codigo.toUpperCase(),
-    id_vendedor:     vendedor.id,
-    fuente:          "qr",
-    prioridad:       "media",
-    etapa:           "nuevo",
-    estado:          "activo",
-    en_cola_revision: false,
+    apellido_paterno:  apellidoPaterno,
+    apellido_materno:  String(body.apellido_materno ?? "").trim().toUpperCase() || null,
+    telefono_enc:      encryptField(telefono),
+    telefono_hash:     hashField(telefono),
+    ...(emailRaw ? { email_enc: encryptField(emailRaw), email_hash: hashField(emailRaw) } : {}),
+    estado_ciudad:     body.estado_ciudad  || null,
+    procedimiento:     body.procedimiento  || null,
+    id_aseguradora:    body.id_aseguradora ? parseInt(String(body.id_aseguradora)) : null,
+    notas:             body.notas          || null,
+    codigo_referido:   codigo.toUpperCase(),
+    id_vendedor:       vendedor.id,
+    fuente:            "qr",
+    prioridad:         "media",
+    etapa:             "nuevo",
+    estado:            "activo",
+    en_cola_revision:  false,
   }).select("folio").single()
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   return NextResponse.json({ folio: data.folio }, { status: 201 })
 }

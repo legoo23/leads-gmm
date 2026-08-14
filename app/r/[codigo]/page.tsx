@@ -16,13 +16,18 @@ export default async function CapturaPublicaPage({
   const { codigo } = await params
   const svc = createServiceClient()
 
-  const { data: vendedor } = await svc
-    .from("vendedores")
-    .select("id, nombre, activo")
-    .eq("codigo_unico", codigo.toUpperCase())
-    .single()
+  const [{ data: vendedor }, { data: aseguradoras }] = await Promise.all([
+    svc.from("vendedores").select("id, nombre, activo").eq("codigo_unico", codigo.toUpperCase()).single(),
+    svc.from("aseguradoras").select("id, nombre").eq("activo", true).order("nombre", { ascending: true }),
+  ])
 
   if (!vendedor || !vendedor.activo) notFound()
 
-  return <CaptureClient codigo={codigo.toUpperCase()} vendedorNombre={vendedor.nombre} />
+  return (
+    <CaptureClient
+      codigo={codigo.toUpperCase()}
+      vendedorNombre={vendedor.nombre}
+      aseguradoras={aseguradoras ?? []}
+    />
+  )
 }
