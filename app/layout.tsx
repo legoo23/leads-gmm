@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
+import AuthHashHandler from "@/components/AuthHashHandler"
 import "./globals.css"
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] })
@@ -13,7 +14,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className={`${geistSans.variable} ${geistMono.variable} h-full`}>
-      <body className="h-full">{children}</body>
+      <body className="h-full">
+        <AuthHashHandler />
+        {children}
+      </body>
     </html>
   )
 }
