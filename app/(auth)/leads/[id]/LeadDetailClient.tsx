@@ -278,6 +278,8 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
   const [tab, setTab] = useState("contacto")
   const [saving, setSaving] = useState(false)
   const [changingEtapa, setChangingEtapa] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [form, setForm] = useState<Partial<Lead>>({})
   const [saveMsg, setSaveMsg] = useState("")
   const [etapaError, setEtapaError] = useState("")
@@ -519,6 +521,19 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
     setSaving(false)
   }
 
+  async function deleteLead() {
+    setDeleting(true)
+    const res = await fetch(`/api/leads/${leadId}`, { method: "DELETE" })
+    setDeleting(false)
+    if (res.ok) {
+      window.location.href = "/leads"
+    } else {
+      const j = await res.json()
+      alert(j.error ?? "Error al eliminar el lead")
+      setConfirmDelete(false)
+    }
+  }
+
   async function changeEtapa(etapa: string) {
     setChangingEtapa(true)
     setEtapaError("")
@@ -590,7 +605,38 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
             {lead.fecha_conversion && ` · Convertido ${formatDate(lead.fecha_conversion)}`}
           </p>
         </div>
+        {rol === "admin" && (
+          <button onClick={() => setConfirmDelete(true)}
+            className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors hover:bg-red-50"
+            style={{ color: "#DC2626" }} title="Eliminar lead">
+            <Trash2 size={14} />
+          </button>
+        )}
       </div>
+
+      {/* ── Confirmación de eliminación ─────────────────────────── */}
+      {confirmDelete && (
+        <div className="rounded-xl border p-4 flex flex-col gap-3" style={{ background: "#FEF2F2", borderColor: "#FECACA" }}>
+          <p className="text-sm font-semibold" style={{ color: "#991B1B" }}>
+            ¿Eliminar este lead permanentemente?
+          </p>
+          <p className="text-xs" style={{ color: "#DC2626" }}>
+            Esta acción no se puede deshacer. Se eliminará el expediente completo de {lead.nombre} {lead.apellido_paterno ?? ""}.
+          </p>
+          <div className="flex items-center gap-2">
+            <button onClick={deleteLead} disabled={deleting}
+              className="px-4 h-8 rounded-lg text-xs font-semibold text-white transition-colors"
+              style={{ background: "#DC2626" }}>
+              {deleting ? "Eliminando..." : "Sí, eliminar"}
+            </button>
+            <button onClick={() => setConfirmDelete(false)} disabled={deleting}
+              className="px-4 h-8 rounded-lg text-xs border transition-colors"
+              style={{ borderColor: "#FECACA", color: "#DC2626" }}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Pipeline stepper ───────────────────────────────────── */}
       <div className="rounded-xl border p-4" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>

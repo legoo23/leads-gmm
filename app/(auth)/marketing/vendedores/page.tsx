@@ -4,6 +4,7 @@ import {
   Plus, QrCode, Copy, Check, ChevronDown, ChevronUp,
   TrendingUp, Users, DollarSign, Award, RefreshCw,
   Phone, Mail, MapPin, Building2, CreditCard, X, Send,
+  UserX, UserCheck,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Modal } from "@/components/ui/modal"
@@ -302,6 +303,7 @@ export default function VendedoresPage() {
   const [copied, setCopied] = useState<number | null>(null)
   const [sending, setSending] = useState<number | null>(null)
   const [sent, setSent] = useState<number | null>(null)
+  const [toggling, setToggling] = useState<number | null>(null)
   const [fechaDesde, setFechaDesde] = useState("")
   const [fechaHasta, setFechaHasta] = useState("")
 
@@ -357,6 +359,22 @@ export default function VendedoresPage() {
       setEditVendedor(null)
     }
     setSaving(false)
+  }
+
+  async function toggleActivo(v: Vendedor) {
+    const accion = v.activo ? "dar de baja" : "reactivar"
+    if (!confirm(`¿Confirmas ${accion} a ${v.nombre}?`)) return
+    setToggling(v.id)
+    const res = await fetch(`/api/vendedores/${v.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ activo: !v.activo }),
+    })
+    if (res.ok) {
+      const { data: updated } = await res.json()
+      setVendedores(prev => prev.map(vv => vv.id === updated.id ? updated : vv))
+    }
+    setToggling(null)
   }
 
   function copyLink(v: Vendedor) {
@@ -450,6 +468,12 @@ export default function VendedoresPage() {
                     style={{ borderColor: "var(--border)", color: "var(--accent)" }}>
                     ✎ Editar
                   </button>
+                  <button onClick={() => toggleActivo(v)} disabled={toggling === v.id}
+                    className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-lg text-xs border transition-colors"
+                    style={{ borderColor: "var(--border)", color: v.activo ? "#DC2626" : "#059669" }}>
+                    {v.activo ? <UserX size={12} /> : <UserCheck size={12} />}
+                    {toggling === v.id ? "..." : v.activo ? "Dar de baja" : "Reactivar"}
+                  </button>
                 </div>
               </div>
             ))}
@@ -515,6 +539,12 @@ export default function VendedoresPage() {
                         </button>
                         <button onClick={() => setEditVendedor(v)} className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-[var(--surface-2)] text-xs font-medium"
                           style={{ color: "var(--accent)" }} title="Editar">✎</button>
+                        <button onClick={() => toggleActivo(v)} disabled={toggling === v.id}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-[var(--surface-2)]"
+                          style={{ color: v.activo ? "#DC2626" : "#059669" }}
+                          title={v.activo ? "Dar de baja" : "Reactivar"}>
+                          {toggling === v.id ? <RefreshCw size={12} className="animate-spin" /> : v.activo ? <UserX size={12} /> : <UserCheck size={12} />}
+                        </button>
                       </div>
                     </td>
                   </tr>
