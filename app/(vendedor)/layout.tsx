@@ -6,7 +6,7 @@ import { LayoutDashboard, LogOut } from "lucide-react"
 export default async function VendedorLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect("/login")
+  if (!user) redirect("/portal/login")
 
   // Verify this user is a vendor
   const { data: profile } = await supabase.from("user_profiles").select("rol, nombre").eq("id", user.id).single()

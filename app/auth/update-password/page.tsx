@@ -27,7 +27,15 @@ export default function UpdatePasswordPage() {
       return
     }
     setSuccess(true)
-    setTimeout(() => router.push("/leads"), 2000)
+    // Detectar rol para redirigir al destino correcto
+    const { data: { user: currentUser } } = await supabase.auth.getUser()
+    let destination = "/leads"
+    if (currentUser) {
+      const { data: profile } = await supabase
+        .from("user_profiles").select("rol").eq("id", currentUser.id).single()
+      if (profile?.rol === "vendedor") destination = "/mi-panel"
+    }
+    setTimeout(() => router.push(destination), 2000)
   }
 
   return (

@@ -19,7 +19,7 @@ interface VendedorEmailData {
 function buildWelcomeHtml(v: VendedorEmailData): string {
   const nombreCompleto = [v.nombre, v.apellido_paterno].filter(Boolean).join(" ")
   const link           = `${APP_URL}/r/${v.codigo_unico}`
-  const bienvenidaUrl  = `${APP_URL}/bienvenida/${v.codigo_unico}`
+  const bienvenidaUrl  = `${APP_URL}/portal/login`
   const verde          = "#0F6E56"
   const verdeClaro     = "#E1F5EE"
 
@@ -120,9 +120,9 @@ function buildWelcomeHtml(v: VendedorEmailData): string {
     <tr><td style="text-align:center;">
       <a href="${bienvenidaUrl}"
         style="display:inline-block;background:${verde};color:white;padding:14px 32px;border-radius:10px;text-decoration:none;font-size:15px;font-weight:700;letter-spacing:0.3px;">
-        Ver mi tarjeta y manual completo →
+        Entrar a mi panel →
       </a>
-      <p style="margin:12px 0 0;font-size:12px;color:#9CA3AF;">También puedes descargar tu QR en alta resolución desde ahí</p>
+      <p style="margin:12px 0 0;font-size:12px;color:#9CA3AF;">Recibirás un correo aparte para activar tu contraseña de acceso.</p>
     </td></tr>
     </table>
 
