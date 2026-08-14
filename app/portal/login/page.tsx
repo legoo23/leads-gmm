@@ -1,33 +1,84 @@
 "use client"
 import { Suspense, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { useRouter, useSearchParams } from "next/navigation"
-import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 
 function PortalLoginForm() {
-  const [email, setEmail]       = useState("")
-  const [password, setPassword] = useState("")
-  const [loading, setLoading]   = useState(false)
-  const [error, setError]       = useState("")
-  const router  = useRouter()
-  const params  = useSearchParams()
+  const [email, setEmail]     = useState("")
+  const [sent, setSent]       = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError]     = useState("")
+  const params        = useSearchParams()
   const callbackError = params.get("error")
-  const supabase = createClient()
+  const supabase      = createClient()
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError("")
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=/mi-panel`,
+        shouldCreateUser: true,
+      },
+    })
     if (error) {
-      setError("Credenciales incorrectas. Verifica tu correo y contraseña.")
+      setError("No se pudo enviar el enlace. Verifica tu correo e intenta de nuevo.")
       setLoading(false)
       return
     }
-    router.push("/mi-panel")
-    router.refresh()
+    setSent(true)
+    setLoading(false)
   }
 
+  // ── Pantalla de confirmación ───────────────────────────────────────────────
+  if (sent) {
+    return (
+      <div className="rounded-2xl p-8 text-center space-y-5" style={{
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
+        boxShadow: "var(--shadow)",
+      }}>
+        <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto"
+          style={{ background: "#ECFDF5", border: "2px solid #A7F3D0" }}>
+          <svg width="28" height="28" fill="none" stroke="#059669" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+        </div>
+
+        <div>
+          <h2 className="text-base font-bold mb-1" style={{ color: "var(--text)" }}>
+            Revisa tu correo
+          </h2>
+          <p className="text-sm" style={{ color: "var(--muted)" }}>
+            Enviamos un enlace de acceso a
+          </p>
+          <p className="text-sm font-semibold mt-0.5" style={{ color: "var(--text)" }}>
+            {email}
+          </p>
+        </div>
+
+        <div className="rounded-xl p-3 text-xs leading-relaxed text-left"
+          style={{ background: "var(--surface-2)", color: "var(--muted)" }}>
+          <p className="font-semibold mb-1" style={{ color: "var(--text)" }}>Pasos:</p>
+          <p>1. Abre el correo de <strong>iHelp Medica</strong></p>
+          <p>2. Haz clic en <strong>"Entrar a mi panel"</strong></p>
+          <p>3. Listo — acceso automático, sin contraseña</p>
+          <p className="mt-2" style={{ color: "var(--subtle)" }}>¿No lo ves? Revisa la carpeta de spam o correo no deseado.</p>
+        </div>
+
+        <button
+          onClick={() => { setSent(false); setError("") }}
+          className="text-xs transition-colors"
+          style={{ color: "var(--muted)" }}>
+          Usar otro correo
+        </button>
+      </div>
+    )
+  }
+
+  // ── Formulario ─────────────────────────────────────────────────────────────
   return (
     <div className="rounded-2xl p-8" style={{
       background: "var(--surface)",
@@ -38,10 +89,10 @@ function PortalLoginForm() {
         Acceso de asesores
       </h2>
       <p className="text-xs mb-6" style={{ color: "var(--muted)" }}>
-        Ingresa con el correo y contraseña que creaste al activar tu cuenta.
+        Ingresa tu correo y te enviaremos un enlace de acceso directo. Sin contraseña.
       </p>
 
-      <form onSubmit={handleLogin} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide"
             style={{ color: "var(--muted)" }}>
@@ -54,28 +105,6 @@ function PortalLoginForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="tu@correo.com"
-            className="w-full rounded-lg px-3 py-2.5 text-sm transition-colors"
-            style={{
-              background: "var(--surface-2)",
-              border: "1px solid var(--border)",
-              color: "var(--text)",
-              outline: "none",
-            }}
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wide"
-            style={{ color: "var(--muted)" }}>
-            Contraseña
-          </label>
-          <input
-            type="password"
-            required
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
             className="w-full rounded-lg px-3 py-2.5 text-sm transition-colors"
             style={{
               background: "var(--surface-2)",
@@ -102,16 +131,8 @@ function PortalLoginForm() {
           className="w-full rounded-lg py-2.5 text-sm font-semibold text-white transition-opacity disabled:opacity-60"
           style={{ background: "var(--accent)" }}
         >
-          {loading ? "Ingresando..." : "Entrar a mi panel"}
+          {loading ? "Enviando enlace..." : "Enviar enlace de acceso →"}
         </button>
-
-        <div className="text-center">
-          <Link href="/auth/forgot-password"
-            className="text-xs transition-colors"
-            style={{ color: "var(--muted)" }}>
-            ¿Olvidaste tu contraseña?
-          </Link>
-        </div>
       </form>
     </div>
   )

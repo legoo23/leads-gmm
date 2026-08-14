@@ -70,26 +70,8 @@ export async function POST(req: NextRequest) {
 
   await logAudit({ accion: "create_vendedor", tabla: "vendedores", id_registro: data.id, id_usuario: user.id })
 
+  // Email de bienvenida con QR y link al portal — falla silenciosamente
   if (data.email) {
-    // Invitar al vendedor vía Supabase Auth para que cree su contraseña
-    const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://ihelpmedica.mx"
-    const { data: authUser, error: inviteError } = await svc.auth.admin.inviteUserByEmail(
-      data.email,
-      {
-        data:       { nombre: data.nombre, rol: "vendedor" },
-        redirectTo: `${APP_URL}/auth/callback?next=/auth/update-password`,
-      }
-    )
-    if (inviteError) {
-      console.error("[invite vendedor]", inviteError.message)
-    } else if (authUser?.user) {
-      await svc.from("user_profiles").upsert(
-        { id: authUser.user.id, rol: "vendedor", nombre: data.nombre },
-        { onConflict: "id" }
-      )
-    }
-
-    // Email de bienvenida con QR — falla silenciosamente
     const nivel = data.niveles_comision as { nombre: string; monto: number } | null
     sendWelcomeVendedor({
       nombre:           data.nombre,
