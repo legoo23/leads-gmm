@@ -124,6 +124,28 @@ export default function BienvenidaClient({
           )}
         </div>
 
+        {/* ── ACCESO AL PORTAL ── */}
+        <div className="no-print rounded-2xl border-2 p-6" style={{ borderColor: VERDE, background: VERDE_LIGHT }}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: VERDE }}>
+                Tu portal de seguimiento
+              </p>
+              <p className="text-lg font-bold" style={{ color: "#111827" }}>
+                ihelpmedica.mx/portal/login
+              </p>
+              <p className="text-sm mt-1" style={{ color: "#374151" }}>
+                Ve tus leads, el estado de cada caso y tus comisiones en tiempo real.
+              </p>
+            </div>
+            <a href="/portal/login"
+              className="shrink-0 inline-flex items-center justify-center px-6 py-3 rounded-xl text-sm font-bold text-white shadow-md"
+              style={{ background: VERDE, minWidth: 160 }}>
+              Entrar a mi panel →
+            </a>
+          </div>
+        </div>
+
         {/* ── TARJETA (imprimible) ── */}
         <section>
           <h2 className="no-print text-base font-bold mb-4" style={{ color: "#374151" }}>
@@ -265,6 +287,20 @@ export default function BienvenidaClient({
             ))}
           </div>
         </section>
+
+        {/* ── CTA FINAL ── */}
+        <div className="no-print rounded-2xl p-6 text-center"
+          style={{ background: VERDE }}>
+          <p className="text-lg font-bold text-white mb-1">¿Listo para empezar?</p>
+          <p className="text-sm mb-4" style={{ color: "rgba(255,255,255,.8)" }}>
+            Entra a tu panel, copia tu link y empieza a compartirlo.
+          </p>
+          <a href="/portal/login"
+            className="inline-flex items-center justify-center px-8 py-3 rounded-xl text-sm font-bold"
+            style={{ background: "white", color: VERDE }}>
+            Entrar a mi panel →
+          </a>
+        </div>
 
         {/* ── CONTACTO ── */}
         <section className="text-center pb-8">

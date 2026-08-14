@@ -105,6 +105,15 @@ function buildWelcomeHtml(v: VendedorEmailData): string {
       </td></tr>`).join("")}
     </table>
 
+    <!-- Acceso al portal -->
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#F0F4F8;border-radius:12px;margin-bottom:24px;">
+    <tr><td style="padding:18px 20px;">
+      <p style="margin:0 0 6px;font-size:11px;color:#6B7280;text-transform:uppercase;letter-spacing:1.5px;font-weight:600;">Tu portal de asesor</p>
+      <p style="margin:0 0 4px;font-size:22px;font-weight:700;color:#0F1929;letter-spacing:-0.5px;">ihelpmedica.mx/portal/login</p>
+      <p style="margin:0;font-size:12px;color:#6B7280;">Aquí puedes ver tus leads, el estado de cada caso y tus comisiones en tiempo real.</p>
+    </td></tr>
+    </table>
+
     <!-- Qué decirle al paciente -->
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;margin-bottom:28px;">
     <tr><td style="padding:16px 18px;">
@@ -115,14 +124,19 @@ function buildWelcomeHtml(v: VendedorEmailData): string {
     </td></tr>
     </table>
 
-    <!-- CTA -->
+    <!-- CTAs -->
     <table width="100%" cellpadding="0" cellspacing="0">
     <tr><td style="text-align:center;">
       <a href="${bienvenidaUrl}"
-        style="display:inline-block;background:${verde};color:white;padding:14px 32px;border-radius:10px;text-decoration:none;font-size:15px;font-weight:700;letter-spacing:0.3px;">
+        style="display:inline-block;background:${verde};color:white;padding:14px 32px;border-radius:10px;text-decoration:none;font-size:15px;font-weight:700;letter-spacing:0.3px;margin-bottom:12px;">
         Entrar a mi panel →
       </a>
-      <p style="margin:12px 0 0;font-size:12px;color:#9CA3AF;">Recibirás un correo aparte para activar tu contraseña de acceso.</p>
+      <br/>
+      <a href="${APP_URL}/bienvenida/${v.codigo_unico}"
+        style="display:inline-block;color:${verde};font-size:13px;font-weight:600;text-decoration:none;border:1px solid ${verde};padding:10px 24px;border-radius:10px;">
+        Ver mi guía completa y tarjeta →
+      </a>
+      <p style="margin:12px 0 0;font-size:12px;color:#9CA3AF;">Recibirás un correo aparte de Supabase para activar tu contraseña de acceso.</p>
     </td></tr>
     </table>
 

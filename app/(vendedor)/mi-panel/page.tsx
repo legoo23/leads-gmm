@@ -784,6 +784,21 @@ export default function MiPanelPage() {
               </p>
             </div>
           )}
+
+          {/* Guía del asesor */}
+          {profile && (
+            <a href={`/bienvenida/${profile.codigo_unico}`} target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-between px-4 py-3.5 rounded-xl border transition-colors hover:opacity-80"
+              style={{ background: "var(--surface)", borderColor: "var(--border)", textDecoration: "none" }}>
+              <div>
+                <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>Ver mi guía de asesor</p>
+                <p className="text-xs mt-0.5" style={{ color: "var(--subtle)" }}>
+                  Descarga tu QR, imprime tu tarjeta y consulta el manual completo
+                </p>
+              </div>
+              <span className="text-base" style={{ color: "var(--accent)" }}>→</span>
+            </a>
+          )}
         </div>
       )}
     </div>
