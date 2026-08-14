@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
-import { Settings, Users, DollarSign, Plus, Pencil, Trash2, UserX, UserCheck, BarChart2, Star, Eye, EyeOff, Building2 } from "lucide-react"
+import { Settings, Users, DollarSign, Plus, Pencil, Trash2, UserX, UserCheck, BarChart2, Star, Eye, EyeOff, Building2, MessageSquare, Newspaper, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Modal } from "@/components/ui/modal"
 import { Input, Select } from "@/components/ui/input"
@@ -15,6 +15,8 @@ const TABS = [
   { key: "usuarios",      label: "Usuarios",             icon: Users },
   { key: "niveles",       label: "Niveles de comisión",  icon: DollarSign },
   { key: "aseguradoras",  label: "Aseguradoras",         icon: Building2 },
+  { key: "mensajes",      label: "Mensajes",             icon: MessageSquare },
+  { key: "noticias",      label: "Noticias",             icon: Newspaper },
   { key: "reportes",      label: "Reportes",             icon: BarChart2 },
   { key: "testimonios",   label: "Testimonios",          icon: Star },
   { key: "sistema",       label: "Sistema",              icon: Settings },
@@ -85,6 +87,24 @@ export default function AdminPage() {
   const [tstTogglingId,  setTstTogglingId]  = useState<number | null>(null)
   const [tstDeletingId,  setTstDeletingId]  = useState<number | null>(null)
 
+  /* ── Mensajes vendedores ──────────────────── */
+  interface MensajeAdmin { id: number; asunto: string; cuerpo: string; destinatario: string; activo: boolean; created_at: string; id_vendedor: number | null; vendedores?: { nombre: string } | null }
+  interface VendedorSimple { id: number; nombre: string }
+  const [mensajesAdmin,     setMensajesAdmin]     = useState<MensajeAdmin[]>([])
+  const [mensajesLoaded,    setMensajesLoaded]    = useState(false)
+  const [mensajesLoading,   setMensajesLoading]   = useState(false)
+  const [mensajeModal,      setMensajeModal]      = useState(false)
+  const [mensajeForm,       setMensajeForm]       = useState({ asunto: "", cuerpo: "", destinatario: "todos", id_vendedor: "" })
+  const [vendedoresList,    setVendedoresList]    = useState<VendedorSimple[]>([])
+
+  /* ── Noticias vendedores ──────────────────── */
+  interface NoticiaAdmin { id: number; titulo: string; cuerpo: string; tipo: string; activo: boolean; orden: number; created_at: string }
+  const [noticiasAdmin,     setNoticiasAdmin]     = useState<NoticiaAdmin[]>([])
+  const [noticiasAdmLoaded, setNoticiasAdmLoaded] = useState(false)
+  const [noticiasAdmLoading,setNoticiasAdmLoading]= useState(false)
+  const [noticiaModal,      setNoticiaModal]      = useState<"nuevo" | NoticiaAdmin | null>(null)
+  const [noticiaForm,       setNoticiaForm]       = useState({ titulo: "", cuerpo: "", tipo: "novedad", orden: "0" })
+
   /* ── Aseguradoras ─────────────────────────── */
   const [aseguradoras,      setAseguradoras]      = useState<Aseguradora[]>([])
   const [asgLoaded,         setAsgLoaded]         = useState(false)
@@ -111,10 +131,102 @@ export default function AdminPage() {
   }, [])
 
   useEffect(() => {
-    if (tab === "reportes"      && !rptLoaded) loadReportes()
-    if (tab === "testimonios"   && !tstLoaded) loadTestimonios()
-    if (tab === "aseguradoras"  && !asgLoaded) loadAseguradoras()
+    if (tab === "reportes"      && !rptLoaded)          loadReportes()
+    if (tab === "testimonios"   && !tstLoaded)          loadTestimonios()
+    if (tab === "aseguradoras"  && !asgLoaded)          loadAseguradoras()
+    if (tab === "mensajes"      && !mensajesLoaded)     loadMensajesAdmin()
+    if (tab === "noticias"      && !noticiasAdmLoaded)  loadNoticiasAdmin()
   }, [tab]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ── Mensajes Admin ────────────────────────── */
+  async function loadMensajesAdmin() {
+    setMensajesLoading(true)
+    const [msgs, vends] = await Promise.all([
+      fetch("/api/admin/mensajes").then(r => r.json()).catch(() => ({ mensajes: [] })),
+      fetch("/api/vendedores?activo=true&limit=200").then(r => r.json()).catch(() => ({ data: [] })),
+    ])
+    setMensajesAdmin(msgs.mensajes ?? [])
+    setVendedoresList((vends.data ?? []).map((v: { id: number; nombre: string }) => ({ id: v.id, nombre: v.nombre })))
+    setMensajesLoaded(true)
+    setMensajesLoading(false)
+  }
+
+  async function enviarMensaje(e: React.FormEvent) {
+    e.preventDefault(); setSaving(true); setError("")
+    const payload: Record<string, unknown> = {
+      asunto: mensajeForm.asunto.trim(),
+      cuerpo: mensajeForm.cuerpo.trim(),
+      destinatario: mensajeForm.destinatario,
+    }
+    if (mensajeForm.destinatario === "individual" && mensajeForm.id_vendedor)
+      payload.id_vendedor = parseInt(mensajeForm.id_vendedor)
+    if (!payload.asunto) { setError("El asunto es requerido"); setSaving(false); return }
+    if (!payload.cuerpo)  { setError("El cuerpo es requerido"); setSaving(false); return }
+    const res  = await fetch("/api/admin/mensajes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+    const json = await res.json()
+    if (res.ok) {
+      setMensajesAdmin(p => [json.mensaje, ...p])
+      setMensajeModal(false)
+      setMensajeForm({ asunto: "", cuerpo: "", destinatario: "todos", id_vendedor: "" })
+    } else { setError(json.error ?? "Error al enviar") }
+    setSaving(false)
+  }
+
+  async function eliminarMensaje(id: number) {
+    await fetch(`/api/admin/mensajes/${id}`, { method: "DELETE" })
+    setMensajesAdmin(p => p.filter(m => m.id !== id))
+  }
+
+  /* ── Noticias Admin ─────────────────────────── */
+  async function loadNoticiasAdmin() {
+    setNoticiasAdmLoading(true)
+    const r = await fetch("/api/admin/noticias").then(x => x.json()).catch(() => ({ noticias: [] }))
+    setNoticiasAdmin(r.noticias ?? [])
+    setNoticiasAdmLoaded(true)
+    setNoticiasAdmLoading(false)
+  }
+
+  function openNuevaNoticia() {
+    setNoticiaForm({ titulo: "", cuerpo: "", tipo: "novedad", orden: "0" })
+    setError(""); setNoticiaModal("nuevo")
+  }
+
+  function openEditNoticia(n: NoticiaAdmin) {
+    setNoticiaForm({ titulo: n.titulo, cuerpo: n.cuerpo, tipo: n.tipo, orden: String(n.orden) })
+    setError(""); setNoticiaModal(n)
+  }
+
+  async function guardarNoticia(e: React.FormEvent) {
+    e.preventDefault(); setSaving(true); setError("")
+    const payload = {
+      titulo: noticiaForm.titulo.trim(),
+      cuerpo: noticiaForm.cuerpo.trim(),
+      tipo:   noticiaForm.tipo,
+      orden:  Number(noticiaForm.orden),
+    }
+    if (!payload.titulo) { setError("El título es requerido"); setSaving(false); return }
+    if (!payload.cuerpo) { setError("El contenido es requerido"); setSaving(false); return }
+    const esNueva = noticiaModal === "nuevo"
+    const url    = esNueva ? "/api/admin/noticias" : `/api/admin/noticias/${(noticiaModal as NoticiaAdmin).id}`
+    const method = esNueva ? "POST" : "PATCH"
+    const res    = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+    const json   = await res.json()
+    if (res.ok) {
+      const item = json.noticia
+      if (esNueva) setNoticiasAdmin(p => [item, ...p])
+      else         setNoticiasAdmin(p => p.map(x => x.id === (noticiaModal as NoticiaAdmin).id ? item : x))
+      setNoticiaModal(null)
+    } else { setError(json.error ?? "Error al guardar") }
+    setSaving(false)
+  }
+
+  async function toggleNoticiaActiva(n: NoticiaAdmin) {
+    const res = await fetch(`/api/admin/noticias/${n.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ activo: !n.activo }),
+    })
+    if (res.ok) setNoticiasAdmin(p => p.map(x => x.id === n.id ? { ...x, activo: !n.activo } : x))
+  }
 
   /* ── Aseguradoras ──────────────────────────── */
   async function loadAseguradoras() {
@@ -649,6 +761,225 @@ export default function AdminPage() {
             Las aseguradoras activas aparecen en el formulario de captura del QR.
             Las inactivas se conservan en el historial de leads pero no se muestran a nuevos prospectos.
           </div>
+        </div>
+      )}
+
+      {/* ── MENSAJES VENDEDORES ──────────────────── */}
+      {tab === "mensajes" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>Mensajes a vendedores</p>
+              <p className="text-xs" style={{ color: "var(--subtle)" }}>
+                Los vendedores reciben los mensajes en su portal y los pueden marcar como leídos.
+              </p>
+            </div>
+            <Button size="sm" onClick={() => { setMensajeForm({ asunto: "", cuerpo: "", destinatario: "todos", id_vendedor: "" }); setError(""); setMensajeModal(true) }}>
+              <Send size={12} />Nuevo mensaje
+            </Button>
+          </div>
+
+          {mensajesLoading && <div className="text-center py-10 text-xs" style={{ color: "var(--subtle)" }}>Cargando...</div>}
+
+          {!mensajesLoading && mensajesAdmin.length === 0 && (
+            <div className="rounded-xl border border-dashed p-10 text-center" style={{ borderColor: "var(--border)" }}>
+              <MessageSquare size={28} className="mx-auto mb-2" style={{ color: "var(--border)" }} />
+              <p className="text-sm font-medium" style={{ color: "var(--muted)" }}>Sin mensajes enviados</p>
+            </div>
+          )}
+
+          {mensajesAdmin.length > 0 && (
+            <div className="space-y-2">
+              {mensajesAdmin.map((m) => (
+                <div key={m.id} className="rounded-xl border px-4 py-3 flex items-start justify-between gap-3"
+                  style={{ background: m.activo ? "var(--surface)" : "var(--surface-2)", borderColor: "var(--border)", opacity: m.activo ? 1 : 0.6 }}>
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold" style={{ color: "var(--text)" }}>{m.asunto}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                        style={{ background: m.destinatario === "todos" ? "#DBEAFE" : "#F3E8FF", color: m.destinatario === "todos" ? "#1D4ED8" : "#7C3AED" }}>
+                        {m.destinatario === "todos" ? "Todos los vendedores" : (m.vendedores?.nombre ?? "Vendedor individual")}
+                      </span>
+                    </div>
+                    <p className="text-xs leading-relaxed line-clamp-2" style={{ color: "var(--muted)" }}>{m.cuerpo}</p>
+                    <p className="text-[10px]" style={{ color: "var(--subtle)" }}>
+                      {new Date(m.created_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                  </div>
+                  <button onClick={() => eliminarMensaje(m.id)}
+                    className="shrink-0 p-1.5 rounded-lg text-xs transition-colors hover:bg-red-50"
+                    style={{ color: "var(--subtle)" }} title="Archivar">
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Modal nuevo mensaje */}
+          <Modal open={mensajeModal} onClose={() => setMensajeModal(false)} title="Enviar mensaje a vendedores">
+            <form onSubmit={enviarMensaje} className="space-y-4">
+              {error && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+              <div>
+                <label className="text-xs font-semibold block mb-1" style={{ color: "var(--muted)" }}>Destinatario</label>
+                <Select value={mensajeForm.destinatario}
+                  onChange={e => setMensajeForm(p => ({ ...p, destinatario: e.target.value, id_vendedor: "" }))}>
+                  <option value="todos">Todos los vendedores</option>
+                  <option value="individual">Vendedor específico</option>
+                </Select>
+              </div>
+              {mensajeForm.destinatario === "individual" && (
+                <div>
+                  <label className="text-xs font-semibold block mb-1" style={{ color: "var(--muted)" }}>Vendedor</label>
+                  <Select value={mensajeForm.id_vendedor}
+                    onChange={e => setMensajeForm(p => ({ ...p, id_vendedor: e.target.value }))}>
+                    <option value="">Selecciona un vendedor...</option>
+                    {vendedoresList.map(v => <option key={v.id} value={v.id}>{v.nombre}</option>)}
+                  </Select>
+                </div>
+              )}
+              <div>
+                <label className="text-xs font-semibold block mb-1" style={{ color: "var(--muted)" }}>Asunto</label>
+                <Input value={mensajeForm.asunto} onChange={e => setMensajeForm(p => ({ ...p, asunto: e.target.value }))}
+                  placeholder="Ej: Actualización del programa de comisiones" maxLength={120} />
+              </div>
+              <div>
+                <label className="text-xs font-semibold block mb-1" style={{ color: "var(--muted)" }}>Mensaje</label>
+                <textarea value={mensajeForm.cuerpo} onChange={e => setMensajeForm(p => ({ ...p, cuerpo: e.target.value }))}
+                  rows={5} maxLength={2000} placeholder="Escribe el mensaje aquí..."
+                  className="w-full rounded-xl border px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2"
+                  style={{ background: "var(--surface)", color: "var(--text)", borderColor: "var(--border)" }} />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button type="button" variant="secondary" onClick={() => setMensajeModal(false)}>Cancelar</Button>
+                <Button type="submit" disabled={saving}>
+                  <Send size={12} />{saving ? "Enviando..." : "Enviar mensaje"}
+                </Button>
+              </div>
+            </form>
+          </Modal>
+        </div>
+      )}
+
+      {/* ── NOTICIAS VENDEDORES ───────────────────── */}
+      {tab === "noticias" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>Noticias y Tips</p>
+              <p className="text-xs" style={{ color: "var(--subtle)" }}>
+                Contenido visible en la pestaña "Tips" del portal de vendedores.
+              </p>
+            </div>
+            <Button size="sm" onClick={openNuevaNoticia}>
+              <Plus size={12} />Nueva noticia
+            </Button>
+          </div>
+
+          {noticiasAdmLoading && <div className="text-center py-10 text-xs" style={{ color: "var(--subtle)" }}>Cargando...</div>}
+
+          {!noticiasAdmLoading && noticiasAdmin.length === 0 && (
+            <div className="rounded-xl border border-dashed p-10 text-center" style={{ borderColor: "var(--border)" }}>
+              <Newspaper size={28} className="mx-auto mb-2" style={{ color: "var(--border)" }} />
+              <p className="text-sm font-medium" style={{ color: "var(--muted)" }}>Sin noticias publicadas</p>
+              <p className="text-xs mt-1" style={{ color: "var(--subtle)" }}>Agrega noticias, avisos y tips para motivar a tus vendedores</p>
+            </div>
+          )}
+
+          {noticiasAdmin.length > 0 && (
+            <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)" }}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border)" }}>
+                    {["Título", "Tipo", "Orden", "Estado", ""].map((h, i) => (
+                      <th key={i} className="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide"
+                        style={{ color: "var(--subtle)" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {noticiasAdmin.map((n) => (
+                    <tr key={n.id} className="border-t transition-colors"
+                      style={{ borderColor: "var(--border)", opacity: n.activo ? 1 : 0.55 }}>
+                      <td className="px-4 py-3">
+                        <div className="text-xs font-medium" style={{ color: "var(--text)" }}>{n.titulo}</div>
+                        <div className="text-[10px] line-clamp-1 mt-0.5" style={{ color: "var(--subtle)" }}>{n.cuerpo}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                          style={{
+                            background: n.tipo === "ayuda" ? "#ECFDF5" : n.tipo === "aviso" ? "#FFFBEB" : "#DBEAFE",
+                            color:      n.tipo === "ayuda" ? "#059669" : n.tipo === "aviso" ? "#D97706" : "#1D4ED8",
+                          }}>
+                          {n.tipo === "ayuda" ? "Tips" : n.tipo === "aviso" ? "Aviso" : "Novedad"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs tabular-nums" style={{ color: "var(--muted)" }}>{n.orden}</td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium"
+                          style={{ background: n.activo ? "#ECFDF5" : "#F3F4F6", color: n.activo ? "#059669" : "#6B7280" }}>
+                          {n.activo ? "Publicada" : "Oculta"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          <button onClick={() => openEditNoticia(n)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs transition-colors hover:bg-[var(--surface-2)]"
+                            style={{ color: "var(--muted)" }}>
+                            <Pencil size={11} />Editar
+                          </button>
+                          <button onClick={() => toggleNoticiaActiva(n)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs transition-colors hover:bg-[var(--surface-2)]"
+                            style={{ color: n.activo ? "#D97706" : "#059669" }}>
+                            {n.activo ? <><EyeOff size={11} />Ocultar</> : <><Eye size={11} />Publicar</>}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Modal noticia */}
+          <Modal open={noticiaModal !== null} onClose={() => setNoticiaModal(null)}
+            title={noticiaModal === "nuevo" ? "Nueva noticia" : "Editar noticia"}>
+            <form onSubmit={guardarNoticia} className="space-y-4">
+              {error && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+              <div>
+                <label className="text-xs font-semibold block mb-1" style={{ color: "var(--muted)" }}>Título</label>
+                <Input value={noticiaForm.titulo} onChange={e => setNoticiaForm(p => ({ ...p, titulo: e.target.value }))}
+                  placeholder="Título de la noticia o tip" maxLength={120} />
+              </div>
+              <div>
+                <label className="text-xs font-semibold block mb-1" style={{ color: "var(--muted)" }}>Contenido</label>
+                <textarea value={noticiaForm.cuerpo} onChange={e => setNoticiaForm(p => ({ ...p, cuerpo: e.target.value }))}
+                  rows={5} maxLength={3000} placeholder="Escribe el contenido de la noticia..."
+                  className="w-full rounded-xl border px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2"
+                  style={{ background: "var(--surface)", color: "var(--text)", borderColor: "var(--border)" }} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold block mb-1" style={{ color: "var(--muted)" }}>Tipo</label>
+                  <Select value={noticiaForm.tipo} onChange={e => setNoticiaForm(p => ({ ...p, tipo: e.target.value }))}>
+                    <option value="novedad">Novedad</option>
+                    <option value="aviso">Aviso</option>
+                    <option value="ayuda">Tips</option>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold block mb-1" style={{ color: "var(--muted)" }}>Orden (menor = primero)</label>
+                  <Input type="number" value={noticiaForm.orden}
+                    onChange={e => setNoticiaForm(p => ({ ...p, orden: e.target.value }))} min={0} max={99} />
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button type="button" variant="secondary" onClick={() => setNoticiaModal(null)}>Cancelar</Button>
+                <Button type="submit" disabled={saving}>{saving ? "Guardando..." : "Guardar"}</Button>
+              </div>
+            </form>
+          </Modal>
         </div>
       )}
 
