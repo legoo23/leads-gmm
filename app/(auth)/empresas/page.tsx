@@ -1,10 +1,11 @@
 "use client"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import {
   Plus, Building2, Shield, Users, Phone, Mail, MapPin,
   Calendar, QrCode, Copy, Check, Star, Trash2, X, Edit2,
-  Search, ChevronRight, Power, PowerOff,
+  Search, ChevronRight, Power, PowerOff, Link2, Upload,
 } from "lucide-react"
+import QRCode from "react-qr-code"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Modal } from "@/components/ui/modal"
@@ -37,6 +38,46 @@ interface EmpresaProspecto {
   id: number; nombre_empresa: string; nombre_contacto: string | null
   cargo: string | null; telefono: string | null; num_colaboradores: number | null
   aseguradora: string | null; estado: string; notas: string | null; created_at: string
+}
+
+interface CampoForm {
+  campo: string; etiqueta: string; tipo: string; requerido: boolean; opciones?: string[]
+}
+
+interface ServicioConvenio {
+  id: number; nombre: string; descripcion: string | null; icono: string | null
+  precio_regular: number | null; precio_convenio: number | null; pct_descuento: number | null
+  tipo: string; activo: boolean; orden: number
+}
+
+interface ConvenioForm {
+  slug: string; logo_url: string | null; descripcion_landing: string
+  vigencia_inicio: string; vigencia_fin: string; campos_formulario: CampoForm[]
+}
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://ihelpmedica.mx"
+
+const CAMPOS_PREDEFINIDOS: CampoForm[] = [
+  { campo: "nombre",           etiqueta: "Nombre",               tipo: "texto",    requerido: true },
+  { campo: "apellido_paterno", etiqueta: "Apellido paterno",     tipo: "texto",    requerido: true },
+  { campo: "apellido_materno", etiqueta: "Apellido materno",     tipo: "texto",    requerido: false },
+  { campo: "telefono",         etiqueta: "Celular",              tipo: "telefono", requerido: true },
+  { campo: "email",            etiqueta: "Correo electrónico",   tipo: "email",    requerido: false },
+  { campo: "fecha_nacimiento", etiqueta: "Fecha de nacimiento",  tipo: "fecha",    requerido: false },
+  { campo: "num_empleado",     etiqueta: "No. de empleado",      tipo: "texto",    requerido: false },
+  { campo: "departamento",     etiqueta: "Departamento",         tipo: "texto",    requerido: false },
+]
+
+function slugify(s: string): string {
+  return s.toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9\s-]/g, "").trim()
+    .replace(/\s+/g, "-").replace(/-+/g, "-").slice(0, 60)
+}
+
+function fmtMXN(v: number | null) {
+  if (v == null) return "—"
+  return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 0 }).format(v)
 }
 
 type Tab = "empresas" | "aseguradoras" | "prospectos"
@@ -79,7 +120,7 @@ function DetailPanel({
   const [contactos, setContactos] = useState<Contacto[]>([])
   const [eventos, setEventos]     = useState<Evento[]>([])
   const [loadingDetail, setLoadingDetail] = useState(true)
-  const [subTab, setSubTab] = useState<"info" | "contactos" | "eventos">("info")
+  const [subTab, setSubTab] = useState<"info" | "contactos" | "eventos" | "landing">("info")
 
   // Edit
   const [editMode, setEditMode]   = useState(false)
@@ -101,12 +142,50 @@ function DetailPanel({
   const [eForm, setEForm] = useState(EMPTY_EVENTO)
   const [savingE, setSavingE] = useState(false)
 
+  // Landing / Convenio
+  const EMPTY_CONVENIO: ConvenioForm = {
+    slug: "", logo_url: null, descripcion_landing: "", vigencia_inicio: "", vigencia_fin: "",
+    campos_formulario: [],
+  }
+  const [convenioForm, setConvenioForm] = useState<ConvenioForm>(EMPTY_CONVENIO)
+  const [servicios, setServicios]           = useState<ServicioConvenio[]>([])
+  const [landingLoaded, setLandingLoaded]   = useState(false)
+  const [savingLanding, setSavingLanding]   = useState(false)
+  const [landingMsg, setLandingMsg]         = useState<string | null>(null)
+  const [uploadingLogo, setUploadingLogo]   = useState(false)
+  const [addServicio, setAddServicio]       = useState(false)
+  const [sForm, setSForm]                   = useState({ nombre: "", descripcion: "", precio_regular: "", precio_convenio: "", tipo: "general" })
+  const [savingS, setSavingS]               = useState(false)
+  const [linkCopied, setLinkCopied]         = useState(false)
+  const logoInputRef = useRef<HTMLInputElement>(null)
+
   useEffect(() => {
     fetch(`/api/empresas/${empresa.id}`)
       .then((r) => r.json())
       .then((j) => { setContactos(j.contactos ?? []); setEventos(j.eventos ?? []) })
       .finally(() => setLoadingDetail(false))
   }, [empresa.id])
+
+  useEffect(() => {
+    if (subTab !== "landing" || landingLoaded) return
+    Promise.all([
+      fetch(`/api/empresas/${empresa.id}/convenio`).then((r) => r.json()),
+      fetch(`/api/empresas/${empresa.id}/servicios`).then((r) => r.json()),
+    ]).then(([conv, servs]) => {
+      if (conv.data) {
+        setConvenioForm({
+          slug:                conv.data.slug                ?? "",
+          logo_url:            conv.data.logo_url            ?? null,
+          descripcion_landing: conv.data.descripcion_landing ?? "",
+          vigencia_inicio:     conv.data.vigencia_inicio     ?? "",
+          vigencia_fin:        conv.data.vigencia_fin        ?? "",
+          campos_formulario:   Array.isArray(conv.data.campos_formulario) ? conv.data.campos_formulario : [],
+        })
+      }
+      setServicios(servs.data ?? [])
+      setLandingLoaded(true)
+    })
+  }, [subTab, landingLoaded, empresa.id])
 
   const setE = (k: string) =>
     (ev: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -174,6 +253,109 @@ function DetailPanel({
     if (res.ok) { const { data } = await res.json(); setEventos((p) => p.map((e) => e.id === data.id ? data : e)) }
   }
 
+  // ── Landing helpers ──────────────────────────────────────────────────────────
+
+  const setConv = (k: keyof ConvenioForm) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      setConvenioForm((f) => ({ ...f, [k]: e.target.value }))
+
+  function autoSlug() {
+    setConvenioForm((f) => ({ ...f, slug: slugify(empresa.nombre) }))
+  }
+
+  function toggleCampo(c: CampoForm, enabled: boolean) {
+    setConvenioForm((f) => ({
+      ...f,
+      campos_formulario: enabled
+        ? [...f.campos_formulario, { ...c }]
+        : f.campos_formulario.filter((cf) => cf.campo !== c.campo),
+    }))
+  }
+
+  function toggleRequerido(campo: string, requerido: boolean) {
+    setConvenioForm((f) => ({
+      ...f,
+      campos_formulario: f.campos_formulario.map((cf) =>
+        cf.campo === campo ? { ...cf, requerido } : cf
+      ),
+    }))
+  }
+
+  async function saveLanding() {
+    setSavingLanding(true); setLandingMsg(null)
+    const res = await fetch(`/api/empresas/${empresa.id}/convenio`, {
+      method:  "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        slug:                convenioForm.slug                || null,
+        descripcion_landing: convenioForm.descripcion_landing || null,
+        vigencia_inicio:     convenioForm.vigencia_inicio     || null,
+        vigencia_fin:        convenioForm.vigencia_fin        || null,
+        campos_formulario:   convenioForm.campos_formulario,
+      }),
+    })
+    if (res.ok) {
+      const { data } = await res.json()
+      setConvenioForm((f) => ({
+        ...f, slug: data.slug ?? "", logo_url: data.logo_url ?? null,
+      }))
+      setLandingMsg("¡Guardado!")
+      setTimeout(() => setLandingMsg(null), 2000)
+    } else {
+      const { error } = await res.json()
+      setLandingMsg(error ?? "Error al guardar")
+      setTimeout(() => setLandingMsg(null), 3000)
+    }
+    setSavingLanding(false)
+  }
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingLogo(true)
+    const form = new FormData(); form.append("logo", file)
+    const res = await fetch(`/api/empresas/${empresa.id}/logo`, { method: "POST", body: form })
+    if (res.ok) { const { url } = await res.json(); setConvenioForm((f) => ({ ...f, logo_url: url })) }
+    setUploadingLogo(false)
+    if (logoInputRef.current) logoInputRef.current.value = ""
+  }
+
+  async function addServicioFn(ev: React.FormEvent) {
+    ev.preventDefault(); setSavingS(true)
+    const res = await fetch(`/api/empresas/${empresa.id}/servicios`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sForm),
+    })
+    if (res.ok) {
+      const { data } = await res.json()
+      setServicios((p) => [...p, data])
+      setAddServicio(false)
+      setSForm({ nombre: "", descripcion: "", precio_regular: "", precio_convenio: "", tipo: "general" })
+    }
+    setSavingS(false)
+  }
+
+  async function deleteServicio(sid: number) {
+    await fetch(`/api/empresas/${empresa.id}/servicios/${sid}`, { method: "DELETE" })
+    setServicios((p) => p.filter((s) => s.id !== sid))
+  }
+
+  async function toggleServicioActivo(s: ServicioConvenio) {
+    const res = await fetch(`/api/empresas/${empresa.id}/servicios/${s.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ activo: !s.activo }),
+    })
+    if (res.ok) {
+      const { data } = await res.json()
+      setServicios((p) => p.map((sv) => sv.id === data.id ? data : sv))
+    }
+  }
+
+  function copyLink() {
+    const url = `${APP_URL}/c/${convenioForm.slug}`
+    navigator.clipboard.writeText(url).catch(() => {})
+    setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2000)
+  }
+
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
@@ -220,11 +402,12 @@ function DetailPanel({
           </div>
 
           {/* Sub-tabs */}
-          <div className="flex gap-1 mt-4">
+          <div className="flex gap-1 mt-4 flex-wrap">
             {([
               { key: "info",      label: "Información" },
               { key: "contactos", label: `Contactos (${contactos.length})` },
               { key: "eventos",   label: `Eventos (${eventos.length})` },
+              { key: "landing",   label: "Landing QR" },
             ] as const).map(({ key, label }) => (
               <button key={key} onClick={() => setSubTab(key)}
                 className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
@@ -380,6 +563,256 @@ function DetailPanel({
             </div>
           )}
 
+          {/* ── Landing QR ── */}
+          {subTab === "landing" && (
+            <div className="space-y-5">
+              {!landingLoaded ? (
+                <div className="text-center py-10 text-xs" style={{ color: "var(--subtle)" }}>Cargando...</div>
+              ) : (
+                <>
+                  {/* URL y QR */}
+                  <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+                    <div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--subtle)" }}>
+                      URL del convenio
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs pointer-events-none"
+                          style={{ color: "var(--subtle)" }}>/c/</span>
+                        <input value={convenioForm.slug}
+                          onChange={(e) => setConvenioForm((f) => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-") }))}
+                          placeholder="nombre-empresa"
+                          className="w-full h-9 rounded-lg border pl-8 pr-3 text-sm outline-none font-mono"
+                          style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }} />
+                      </div>
+                      <button onClick={autoSlug}
+                        className="text-xs px-3 rounded-lg border font-medium h-9"
+                        style={{ borderColor: "var(--border)", color: "var(--muted)", background: "var(--surface)" }}>
+                        Auto
+                      </button>
+                    </div>
+                    {convenioForm.slug && (
+                      <div className="flex items-start gap-4">
+                        <div className="flex-shrink-0 p-2 rounded-xl border" style={{ background: "white", borderColor: "var(--border)" }}>
+                          <QRCode value={`${APP_URL}/c/${convenioForm.slug}`} size={100} />
+                        </div>
+                        <div className="space-y-2 min-w-0">
+                          <p className="text-[11px] font-mono break-all" style={{ color: "var(--muted)" }}>
+                            {APP_URL}/c/{convenioForm.slug}
+                          </p>
+                          <div className="flex gap-2">
+                            <button onClick={copyLink}
+                              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border font-medium"
+                              style={{ borderColor: "var(--border)", color: linkCopied ? "#059669" : "var(--muted)", background: "var(--surface)" }}>
+                              {linkCopied ? <Check size={11} /> : <Link2 size={11} />}
+                              {linkCopied ? "Copiado" : "Copiar link"}
+                            </button>
+                            <a href={`${APP_URL}/c/${convenioForm.slug}`} target="_blank" rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border font-medium"
+                              style={{ borderColor: "var(--border)", color: "var(--muted)", background: "var(--surface)" }}>
+                              Vista previa
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Logo */}
+                  <div className="space-y-2">
+                    <div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--subtle)" }}>
+                      Logo de la empresa
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {convenioForm.logo_url && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={convenioForm.logo_url} alt="Logo"
+                          className="h-14 w-14 rounded-xl object-contain border"
+                          style={{ background: "var(--surface-2)", borderColor: "var(--border)", padding: 4 }} />
+                      )}
+                      <button onClick={() => logoInputRef.current?.click()} disabled={uploadingLogo}
+                        className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border font-medium"
+                        style={{ borderColor: "var(--border)", color: "var(--muted)", background: "var(--surface)" }}>
+                        <Upload size={12} />
+                        {uploadingLogo ? "Subiendo..." : convenioForm.logo_url ? "Cambiar logo" : "Subir logo"}
+                      </button>
+                      <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+                    </div>
+                  </div>
+
+                  {/* Descripción */}
+                  <div className="space-y-2">
+                    <div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--subtle)" }}>
+                      Descripción de la landing
+                    </div>
+                    <textarea value={convenioForm.descripcion_landing}
+                      onChange={setConv("descripcion_landing")} rows={3}
+                      placeholder="Describe el convenio y sus beneficios..."
+                      className="w-full rounded-lg border px-3 py-2 text-sm outline-none resize-none"
+                      style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }} />
+                  </div>
+
+                  {/* Vigencia */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { key: "vigencia_inicio", label: "Vigencia inicio" },
+                      { key: "vigencia_fin",    label: "Vigencia fin" },
+                    ].map(({ key, label }) => (
+                      <div key={key} className="space-y-1">
+                        <div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--subtle)" }}>
+                          {label}
+                        </div>
+                        <input type="date"
+                          value={convenioForm[key as keyof ConvenioForm] as string}
+                          onChange={setConv(key as keyof ConvenioForm)}
+                          className="w-full h-9 rounded-lg border px-3 text-sm outline-none"
+                          style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }} />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Campos del formulario */}
+                  <div className="space-y-2">
+                    <div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--subtle)" }}>
+                      Campos del formulario público
+                    </div>
+                    <div className="rounded-xl border divide-y" style={{ borderColor: "var(--border)" }}>
+                      {CAMPOS_PREDEFINIDOS.map((c) => {
+                        const active = convenioForm.campos_formulario.find((cf) => cf.campo === c.campo)
+                        const enabled = !!active
+                        return (
+                          <div key={c.campo} className="flex items-center gap-3 px-3 py-2.5">
+                            <input type="checkbox" checked={enabled}
+                              onChange={(e) => toggleCampo(c, e.target.checked)} />
+                            <span className="text-sm flex-1" style={{ color: enabled ? "var(--text)" : "var(--subtle)" }}>
+                              {c.etiqueta}
+                            </span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded font-medium"
+                              style={{ background: "var(--surface-2)", color: "var(--subtle)" }}>
+                              {c.tipo}
+                            </span>
+                            {enabled && (
+                              <label className="flex items-center gap-1.5 text-xs cursor-pointer" style={{ color: "var(--muted)" }}>
+                                <input type="checkbox" checked={active?.requerido ?? false}
+                                  onChange={(e) => toggleRequerido(c.campo, e.target.checked)} />
+                                Requerido
+                              </label>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Servicios */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--subtle)" }}>
+                        Servicios del convenio ({servicios.length})
+                      </div>
+                      <Button size="sm" variant="secondary" onClick={() => setAddServicio(true)}>
+                        <Plus size={12} /> Agregar
+                      </Button>
+                    </div>
+
+                    {addServicio && (
+                      <form onSubmit={addServicioFn} className="rounded-xl border p-4 space-y-3"
+                        style={{ borderColor: "var(--accent)", background: "var(--surface-2)" }}>
+                        <div className="text-xs font-semibold" style={{ color: "var(--accent)" }}>Nuevo servicio</div>
+                        <input required value={sForm.nombre}
+                          onChange={(e) => setSForm((f) => ({ ...f, nombre: e.target.value }))}
+                          placeholder="Nombre del servicio *"
+                          className="w-full h-9 rounded-lg border px-3 text-sm outline-none"
+                          style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }} />
+                        <textarea value={sForm.descripcion}
+                          onChange={(e) => setSForm((f) => ({ ...f, descripcion: e.target.value }))}
+                          placeholder="Descripción (opcional)" rows={2}
+                          className="w-full rounded-lg border px-3 py-2 text-sm outline-none resize-none"
+                          style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }} />
+                        <div className="grid grid-cols-2 gap-2">
+                          <input type="number" step="0.01" value={sForm.precio_regular}
+                            onChange={(e) => setSForm((f) => ({ ...f, precio_regular: e.target.value }))}
+                            placeholder="Precio regular"
+                            className="h-9 rounded-lg border px-3 text-sm outline-none"
+                            style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }} />
+                          <input type="number" step="0.01" value={sForm.precio_convenio}
+                            onChange={(e) => setSForm((f) => ({ ...f, precio_convenio: e.target.value }))}
+                            placeholder="Precio convenio"
+                            className="h-9 rounded-lg border px-3 text-sm outline-none"
+                            style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }} />
+                        </div>
+                        <div className="flex gap-2 justify-end">
+                          <Button type="button" size="sm" variant="secondary" onClick={() => setAddServicio(false)}>Cancelar</Button>
+                          <Button type="submit" size="sm" loading={savingS}>Crear servicio</Button>
+                        </div>
+                      </form>
+                    )}
+
+                    {servicios.map((s) => (
+                      <div key={s.id} className="rounded-xl border p-3.5"
+                        style={{ background: "var(--surface)", borderColor: "var(--border)", opacity: s.activo ? 1 : 0.5 }}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-semibold" style={{ color: "var(--text)" }}>{s.nombre}</div>
+                            {s.descripcion && (
+                              <div className="text-xs mt-0.5 line-clamp-1" style={{ color: "var(--muted)" }}>{s.descripcion}</div>
+                            )}
+                            {(s.precio_convenio != null) && (
+                              <div className="flex items-baseline gap-2 mt-1">
+                                {s.precio_regular != null && (
+                                  <span className="text-xs line-through" style={{ color: "var(--subtle)" }}>{fmtMXN(s.precio_regular)}</span>
+                                )}
+                                <span className="text-sm font-bold" style={{ color: "var(--accent)" }}>{fmtMXN(s.precio_convenio)}</span>
+                                {s.pct_descuento != null && s.pct_descuento > 0 && (
+                                  <span className="text-[10px] font-semibold px-1.5 rounded-full"
+                                    style={{ background: "#ECFDF5", color: "#059669" }}>
+                                    -{Math.round(s.pct_descuento)}%
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <button onClick={() => toggleServicioActivo(s)}
+                              className="p-1.5 rounded-lg border"
+                              style={{ borderColor: "var(--border)", color: s.activo ? "#059669" : "var(--muted)" }}
+                              title={s.activo ? "Desactivar" : "Activar"}>
+                              {s.activo ? <Power size={12} /> : <PowerOff size={12} />}
+                            </button>
+                            <button onClick={() => deleteServicio(s.id)}
+                              className="p-1.5 rounded-lg border"
+                              style={{ borderColor: "var(--border)", color: "var(--muted)" }}>
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {servicios.length === 0 && !addServicio && (
+                      <div className="text-center py-6 text-xs" style={{ color: "var(--subtle)" }}>
+                        Sin servicios registrados
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Save + status */}
+                  <div className="flex items-center gap-3 pt-1">
+                    <Button onClick={saveLanding} loading={savingLanding}>
+                      <Check size={13} /> Guardar landing
+                    </Button>
+                    {landingMsg && (
+                      <span className="text-xs font-medium"
+                        style={{ color: landingMsg.includes("Error") || landingMsg.includes("uso") ? "#DC2626" : "#059669" }}>
+                        {landingMsg}
+                      </span>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {/* ── Eventos ── */}
           {subTab === "eventos" && (
             <div className="space-y-3">
@@ -460,7 +893,7 @@ function DetailPanel({
         </div>
 
         {/* Footer — save edit */}
-        {editMode && (
+        {editMode && subTab === "info" && (
           <div className="px-5 py-3 border-t flex justify-end gap-2" style={{ borderColor: "var(--border)" }}>
             <Button type="button" variant="secondary" size="sm" onClick={() => setEditMode(false)}>Cancelar</Button>
             <Button type="submit" form="edit-empresa" size="sm" loading={saving}>
