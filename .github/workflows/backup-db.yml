@@ -1,0 +1,60 @@
+name: Backup Supabase DB
+
+on:
+  schedule:
+    # Todos los días a las 03:00 hora de la Ciudad de México (UTC-6 → 09:00 UTC)
+    - cron: "0 9 * * *"
+  workflow_dispatch: # también permite lanzarlo a mano desde GitHub
+
+jobs:
+  backup:
+    name: pg_dump → cifrar → guardar
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Instalar cliente de PostgreSQL
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client
+
+      - name: Dump de la base de datos
+        env:
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          TIMESTAMP=$(date +"%Y-%m-%d_%H-%M")
+          FILENAME="backup_leads_${TIMESTAMP}.sql.gz"
+
+          pg_dump \
+            --host=${{ secrets.SUPABASE_DB_HOST }} \
+            --port=5432 \
+            --username=postgres \
+            --dbname=postgres \
+            --no-password \
+            --schema=public \
+            --format=plain \
+            --exclude-table=audit_log \
+          | gzip > "$FILENAME"
+
+          echo "FILENAME=$FILENAME" >> $GITHUB_ENV
+          echo "Dump completado: $FILENAME"
+          ls -lh "$FILENAME"
+
+      - name: Cifrar con AES-256
+        run: |
+          openssl enc -aes-256-cbc -pbkdf2 -iter 100000 \
+            -in "$FILENAME" \
+            -out "${FILENAME}.enc" \
+            -pass pass:${{ secrets.BACKUP_ENCRYPTION_KEY }}
+
+          rm "$FILENAME"
+          echo "Archivo cifrado: ${FILENAME}.enc"
+          ls -lh "${FILENAME}.enc"
+
+      - name: Subir como artifact (retención 90 días)
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ env.FILENAME }}
+          path: "*.enc"
+          retention-days: 90
+          if-no-files-found: error
