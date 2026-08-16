@@ -57,8 +57,8 @@
 ## Pendientes — Media prioridad
 
 ### P-06 — Cambiar contraseña del admin inicial
-**Qué:** La contraseña temporal `LeadsGMM2026!` debe cambiarse antes de producción real.
-**Acción:** Admin → Supabase Dashboard → Auth → Users → cambiar contraseña.
+**Qué:** La contraseña temporal del admin debe cambiarse antes de producción real.
+**Acción:** Supabase Dashboard → Authentication → Users → seleccionar usuario admin → Send password reset email, o cambiarla directamente desde el panel.
 
 ### P-07 — Catálogo de campañas con los 19 temas del manual
 **Qué:** UI para crear campañas con materiales descargables (flyer, texto WhatsApp, texto redes) asociados a los 19 temas del manual de negocio.
