@@ -54,6 +54,7 @@ interface Lead {
   cubre_hospitalizacion: boolean | null; condiciones_excluidas: string | null
   es_preexistencia: boolean | null; numero_autorizacion: string | null
   fecha_autorizacion: string | null; carta_autorizacion_url: string | null
+  carta_autorizacion_path: string | null
   contacto_aseguradora_nombre: string | null; contacto_aseguradora_telefono: string | null
   notas_validacion: string | null
   // Médico asignado
@@ -269,6 +270,38 @@ interface MedicoResult {
   cedula: string | null
   en_red: boolean | null
   hospitales: { nombre: string; ciudad: string | null } | null
+}
+
+/* ─── CartaButton — T-05: URL firmada de 1h, nunca expone path directo ── */
+function CartaButton({ leadId }: { leadId: number }) {
+  const [loading, setLoading] = useState(false)
+
+  async function openCarta() {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/leads/${leadId}/carta`)
+      if (!res.ok) { alert("No se pudo generar el enlace. Intenta de nuevo."); return }
+      const { url } = await res.json()
+      window.open(url, "_blank", "noopener,noreferrer")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2 p-3 rounded-lg" style={{ background: "var(--surface-2)" }}>
+      <FileText size={13} style={{ color: "var(--accent)" }} />
+      <button
+        onClick={openCarta}
+        disabled={loading}
+        className="text-xs font-medium underline disabled:opacity-50"
+        style={{ color: "var(--accent)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+      >
+        {loading ? "Generando enlace..." : "Ver carta de autorización"}
+      </button>
+      <span className="text-xs" style={{ color: "var(--subtle)" }}>(enlace temporal 1h)</span>
+    </div>
+  )
 }
 
 /* ─── Componente principal ───────────────────────────────────────── */
@@ -1260,14 +1293,8 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                 <Input label="Número de autorización" value={form.numero_autorizacion ?? ""} onChange={set("numero_autorizacion")} readOnly={ro} style={{ textTransform: "uppercase" }} />
                 <Input label="Fecha de autorización" type="date" value={form.fecha_autorizacion ?? ""} onChange={set("fecha_autorizacion")} readOnly={ro} />
               </div>
-              {lead.carta_autorizacion_url && (
-                <div className="flex items-center gap-2 p-3 rounded-lg" style={{ background: "var(--surface-2)" }}>
-                  <FileText size={13} style={{ color: "var(--accent)" }} />
-                  <a href={lead.carta_autorizacion_url} target="_blank" rel="noopener noreferrer"
-                    className="text-xs font-medium underline" style={{ color: "var(--accent)" }}>
-                    Ver carta de autorización
-                  </a>
-                </div>
+              {(lead.carta_autorizacion_path || lead.carta_autorizacion_url) && (
+                <CartaButton leadId={lead.id} />
               )}
 
               <SectionTitle>Contacto en Aseguradora</SectionTitle>

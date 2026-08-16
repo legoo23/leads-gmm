@@ -56,29 +56,21 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Error al subir el archivo. Intenta de nuevo." }, { status: 500 })
   }
 
-  // Get public URL (bucket is private — use signed URL valid 10 years)
+  // T-05: para la respuesta inmediata al portal generamos URL firmada de 1h (no 10 años)
   const { data: signed } = await svc.storage
     .from("lead-docs")
-    .createSignedUrl(storagePath, 60 * 60 * 24 * 365 * 10)
+    .createSignedUrl(storagePath, 60 * 60)
 
   const fileUrl = signed?.signedUrl ?? storagePath
 
-  // Map doc tipo to lead column
-  const colMap: Record<string, string> = {
-    poliza:   "carta_autorizacion_url",
-    ine:      "notas",
-    estudios: "notas",
-    domicilio:"notas",
-  }
-
-  // For poliza, store directly in carta_autorizacion_url
   if (docTipo === "poliza") {
-    await svc.from("leads").update({ carta_autorizacion_url: fileUrl }).eq("id", uploadToken.id_lead)
+    // T-05: guardar el path interno (no la URL firmada) — el asesor genera URLs frescas vía /api/leads/[id]/carta
+    await svc.from("leads").update({ carta_autorizacion_path: storagePath }).eq("id", uploadToken.id_lead)
   } else {
-    // Append URL to notas so asesor sees it
+    // Otros documentos: appended en notas para que el asesor los vea
     const { data: lead } = await svc.from("leads").select("notas").eq("id", uploadToken.id_lead).single()
     const notasActual = lead?.notas ?? ""
-    const notasNuevas = `${notasActual}\n[DOC:${docTipo}] ${fileUrl}`.trim()
+    const notasNuevas = `${notasActual}\n[DOC:${docTipo}] ${storagePath}`.trim()
     await svc.from("leads").update({ notas: notasNuevas }).eq("id", uploadToken.id_lead)
   }
 
