@@ -3,14 +3,39 @@ import { createServiceClient } from "@/lib/supabase/server"
 import { assertLicense } from "@/lib/license"
 import { encryptField, hashField } from "@/lib/crypto"
 import { normalizePhone, normalizeEmail, generateFolio } from "@/lib/utils"
+import { extractIP } from "@/lib/audit"
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+// Rate limiting: máx 5 envíos por IP cada 10 min (igual que /api/contacto)
+const RL_MAP = new Map<string, { n: number; reset: number }>()
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now()
+  const WINDOW = 10 * 60 * 1000
+  const MAX = 5
+  const entry = RL_MAP.get(ip)
+  if (entry) {
+    if (now < entry.reset) {
+      if (entry.n >= MAX) return false
+      entry.n++
+      return true
+    }
+  }
+  RL_MAP.set(ip, { n: 1, reset: now + WINDOW })
+  return true
+}
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ codigo: string }> }
 ) {
   assertLicense()
+
+  // Rate limiting por IP
+  const ip = extractIP(req) ?? "unknown"
+  if (!checkRateLimit(ip)) {
+    return NextResponse.json({ error: "Demasiados envíos. Intenta en unos minutos." }, { status: 429 })
+  }
 
   const { codigo } = await params
   const svc = createServiceClient()
@@ -28,6 +53,11 @@ export async function POST(
   let body: Record<string, unknown>
   try { body = await req.json() }
   catch { return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 }) }
+
+  // Honeypot — bots llenan este campo; usuarios reales lo dejan vacío
+  if (String(body._gotcha ?? "").trim()) {
+    return NextResponse.json({ folio: generateFolio() }, { status: 201 })
+  }
 
   const nombre = String(body.nombre ?? "").trim().toUpperCase()
   if (!nombre) return NextResponse.json({ error: "El nombre es requerido" }, { status: 400 })
