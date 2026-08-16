@@ -31,6 +31,8 @@ interface Lead {
   vendedores: { nombre: string; codigo_unico: string } | null
   aseguradoras: { nombre: string } | null
   campanas: { nombre: string; codigo_unico: string } | null
+  empresas: { id: number; nombre: string } | null
+  datos_adicionales: Record<string, string> | null
   // Padecimientos e Historia Clínica
   diagnostico_principal: string | null; diagnosticos_secundarios: string | null
   cirugias_previas: boolean | null; cirugias_previas_desc: string | null
@@ -78,6 +80,7 @@ interface Lead {
 const FUENTE_LABEL: Record<string, string> = {
   whatsapp_bot:   "WhatsApp Bot",
   formulario:     "Formulario web",
+  convenio:       "Convenio empresarial",
   qr:             "QR / Vendedor",
   referido:       "Referido directo",
   llamada:        "Llamada entrante",
@@ -91,6 +94,7 @@ const FUENTE_STYLE: Record<string, { background: string; color: string }> = {
   referido:       { background: "#FFFBEB", color: "#D97706" },
   llamada:        { background: "#FEF2F2", color: "#DC2626" },
   redes_sociales: { background: "#F0F9FF", color: "#0EA5E9" },
+  convenio:       { background: "#FFF7ED", color: "#C2410C" },
 }
 
 /* ─── Constantes de pipeline ─────────────────────────────────────── */
@@ -531,7 +535,7 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
     // Strip joined relations, encrypted fields y etapa/estado
     // (etapa va por /etapa endpoint; excluirla aquí activa el auto-avance del API)
     const {
-      vendedores: _v, aseguradoras: _a, campanas: _c, medicos: _m, hospitales: _h,
+      vendedores: _v, aseguradoras: _a, campanas: _c, medicos: _m, hospitales: _h, empresas: _e,
       id: _id,
       etapa: _etapa, estado: _estado,
       telefono_enc: _te, telefono_hash: _th,
@@ -1661,6 +1665,38 @@ export default function LeadDetailClient({ leadId, rol }: { leadId: number; rol:
                   </div>
                 )}
               </div>
+
+              {/* Empresa / Convenio */}
+              {lead.empresas && (
+                <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "var(--border)" }}>
+                  <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--subtle)" }}>
+                    Empresa del convenio
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>{lead.empresas.nombre}</p>
+                    <span className="text-xs px-2.5 py-1 rounded-full font-medium"
+                      style={{ background: "#FFF7ED", color: "#C2410C" }}>
+                      Convenio corporativo
+                    </span>
+                  </div>
+
+                  {/* Datos adicionales del formulario del convenio */}
+                  {lead.datos_adicionales && Object.keys(lead.datos_adicionales).length > 0 && (
+                    <div className="rounded-lg p-3 space-y-2"
+                      style={{ background: "var(--surface-2)", borderTop: "1px solid var(--border)" }}>
+                      <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--subtle)" }}>
+                        Datos del formulario
+                      </p>
+                      {Object.entries(lead.datos_adicionales).map(([k, v]) => (
+                        <div key={k} className="flex justify-between gap-2 text-xs">
+                          <span style={{ color: "var(--muted)" }}>{k.replace(/_/g, " ")}</span>
+                          <span className="font-medium text-right" style={{ color: "var(--text)" }}>{v}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Vendedor referidor */}
               {lead.vendedores ? (

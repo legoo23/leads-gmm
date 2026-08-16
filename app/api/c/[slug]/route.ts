@@ -7,6 +7,17 @@ import { extractIP, logAudit } from "@/lib/audit"
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+const ASEG_MAP: [string, number][] = [
+  ["gnp",1],["axa",2],["mapfre",3],["metlife",4],["zurich",5],["atlas",6],
+  ["bx",7],["cigna",8],["sura",9],["bbva",10],["allianz",11],["monterrey",12],
+  ["inbursa",13],["chubb",14],["bupa",15],["hdi",16],["qualitas",17],
+]
+function matchAseguradora(nombre: string): number | null {
+  const lower = nombre.toLowerCase()
+  for (const [key, id] of ASEG_MAP) { if (lower.includes(key)) return id }
+  return null
+}
+
 // Rate limiting: máx 5 envíos por IP cada 10 min
 const RL_MAP = new Map<string, { n: number; reset: number }>()
 function checkRateLimit(ip: string): boolean {
@@ -115,7 +126,7 @@ export async function POST(
 
   // Validar campos requeridos
   const camposEstandar = new Set(["nombre", "apellido_paterno", "apellido_materno", "telefono", "email",
-    "fecha_nacimiento", "curp", "estado_ciudad"])
+    "fecha_nacimiento", "curp", "estado_ciudad", "aseguradora_nombre", "procedimiento_gmm", "servicio_interes", "tiene_gmm"])
 
   for (const campo of campos) {
     if (!campo.requerido) continue
@@ -149,6 +160,15 @@ export async function POST(
     }
   }
 
+  // Campos GMM opcionales
+  const aseguradoraNombre = String(body.aseguradora_nombre ?? "").trim()
+  const procedimientoGMM  = String(body.procedimiento_gmm  ?? "").trim().toUpperCase() || null
+  const idAseguradora     = aseguradoraNombre ? matchAseguradora(aseguradoraNombre) : null
+  const servicioInteres   = String(body.servicio_interes   ?? "").trim() || null
+
+  if (servicioInteres) datosAdicionales.servicio_interes = servicioInteres
+  if (aseguradoraNombre && !idAseguradora) datosAdicionales.aseguradora_texto = aseguradoraNombre
+
   const folio = generateFolio()
 
   const { data, error } = await svc.from("leads").insert({
@@ -162,6 +182,8 @@ export async function POST(
     fecha_nacimiento:  body.fecha_nacimiento || null,
     estado_ciudad:     body.estado_ciudad    || null,
     ...(body.curp ? (() => { const c = normalizeCurp(body.curp); return c ? { curp_enc: encryptField(c), curp_hash: hashField(c) } : {} })() : {}),
+    procedimiento:     procedimientoGMM,
+    id_aseguradora:    idAseguradora,
     notas:             body.notas            || null,
     id_empresa:        empresa.id,
     fuente:            "convenio",

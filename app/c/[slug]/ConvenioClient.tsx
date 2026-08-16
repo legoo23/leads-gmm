@@ -126,13 +126,15 @@ export default function ConvenioClient({
   servicios: Servicio[]
   campos: CampoForm[]
 }) {
-  const [formData, setFormData]   = useState<Record<string, string>>({})
-  const [errors, setErrors]       = useState<Record<string, string>>({})
-  const [captchaOk, setCaptchaOk] = useState(false)
-  const [privacidad, setPrivacidad] = useState(false)
-  const [loading, setLoading]     = useState(false)
-  const [folio, setFolio]         = useState<string | null>(null)
-  const [apiErr, setApiErr]       = useState<string | null>(null)
+  const [formData, setFormData]     = useState<Record<string, string>>({})
+  const [errors, setErrors]         = useState<Record<string, string>>({})
+  const [captchaOk, setCaptchaOk]   = useState(false)
+  const [privacidad, setPrivacidad]  = useState(false)
+  const [loading, setLoading]       = useState(false)
+  const [folio, setFolio]           = useState<string | null>(null)
+  const [apiErr, setApiErr]         = useState<string | null>(null)
+  const [servicioInteres, setServicioInteres] = useState<string>("")
+  const [tieneGMM, setTieneGMM]     = useState(false)
 
   const setField = useCallback((campo: string) => (v: string) =>
     setFormData((f) => ({ ...f, [campo]: v })), [])
@@ -145,6 +147,7 @@ export default function ConvenioClient({
       if (c.tipo === "telefono" && val && val.replace(/\D/g,"").length !== 10)
         e[c.campo] = "Debe tener 10 dígitos"
     }
+    if (servicios.length > 0 && !servicioInteres) e._servicio = "Selecciona el servicio de tu interés"
     if (!captchaOk)   e._captcha   = "Completa la verificación de seguridad"
     if (!privacidad)  e._privacidad = "Debes aceptar el Aviso de Privacidad"
     setErrors(e)
@@ -159,7 +162,13 @@ export default function ConvenioClient({
     const res = await fetch(`/api/c/${slug}`, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...formData, _gotcha: "", acepta_privacidad: true }),
+      body: JSON.stringify({
+        ...formData,
+        servicio_interes: servicioInteres || undefined,
+        tiene_gmm: tieneGMM,
+        _gotcha: "",
+        acepta_privacidad: true,
+      }),
     })
     const json = await res.json()
     if (res.ok) {
@@ -334,6 +343,89 @@ export default function ConvenioClient({
                   error={errors[c.campo]}
                 />
               ))}
+
+            {/* Servicio de interés */}
+            {servicios.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold" style={{ color: "var(--muted)" }}>
+                  ¿Qué servicio del convenio te interesa?{" "}
+                  <span style={{ color: "var(--negative)" }}>*</span>
+                </p>
+                <div className="space-y-2">
+                  {servicios.map((s) => (
+                    <label key={s.id} className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="servicio_interes"
+                        value={s.nombre}
+                        checked={servicioInteres === s.nombre}
+                        onChange={() => { setServicioInteres(s.nombre); setErrors((p) => { const n={...p}; delete n._servicio; return n }) }}
+                        className="mt-0.5 flex-shrink-0"
+                        style={{ accentColor: "var(--accent)", cursor: "pointer" }}
+                      />
+                      <span className="text-sm leading-snug" style={{ color: "var(--text)" }}>
+                        {s.nombre}
+                        {s.pct_descuento != null && (
+                          <span className="ml-2 text-xs font-semibold px-1.5 py-0.5 rounded-full"
+                            style={{ background: "#ECFDF5", color: "#059669" }}>
+                            {s.pct_descuento}% desc.
+                          </span>
+                        )}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {errors._servicio && (
+                  <p className="text-xs" style={{ color: "var(--negative)" }}>{errors._servicio}</p>
+                )}
+              </div>
+            )}
+
+            {/* Seguro GMM */}
+            <div className="space-y-3">
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={tieneGMM}
+                  onChange={(e) => setTieneGMM(e.target.checked)}
+                  className="flex-shrink-0"
+                  style={{ width: 16, height: 16, accentColor: "var(--accent)", cursor: "pointer" }}
+                />
+                <span className="text-sm font-medium" style={{ color: "var(--text)" }}>
+                  También tengo Seguro de Gastos Médicos Mayores (GMM)
+                </span>
+              </label>
+
+              {tieneGMM && (
+                <div className="ml-7 space-y-3 rounded-xl border p-4"
+                  style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+                  <div>
+                    <label className="text-xs font-medium block mb-1.5" style={{ color: "var(--muted)" }}>
+                      Aseguradora
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ej: GNP, AXA, Mapfre, MetLife…"
+                      value={formData.aseguradora_nombre ?? ""}
+                      onChange={(e) => setField("aseguradora_nombre")(e.target.value)}
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium block mb-1.5" style={{ color: "var(--muted)" }}>
+                      Procedimiento o padecimiento a tratar
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ej: hernia inguinal, vesícula, rodilla…"
+                      value={formData.procedimiento_gmm ?? ""}
+                      onChange={(e) => setField("procedimiento_gmm")(e.target.value)}
+                      style={inputStyle}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* CAPTCHA */}
             <CaptchaCanvas onVerified={setCaptchaOk} />
