@@ -176,23 +176,44 @@ export default function ConvenioClient({
     return (
       <div className="min-h-screen flex items-center justify-center px-4"
         style={{ background: "var(--bg)" }}>
-        <div className="w-full max-w-sm text-center space-y-5 py-12">
-          <div className="mx-auto w-20 h-20 rounded-full flex items-center justify-center"
-            style={{ background: "#ECFDF5" }}>
-            <CheckCircle size={40} color="#059669" />
+        <div className="w-full max-w-sm space-y-5 py-12">
+          <div className="text-center space-y-4">
+            <div className="mx-auto w-20 h-20 rounded-full flex items-center justify-center"
+              style={{ background: "#ECFDF5", border: "3px solid #A7F3D0" }}>
+              <CheckCircle size={40} color="#059669" />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-2xl font-bold" style={{ color: "var(--text)" }}>
+                ¡Registro completado!
+              </h1>
+              <div className="rounded-2xl border p-4 text-left space-y-2"
+                style={{ background: "#F0FDF4", borderColor: "#A7F3D0" }}>
+                <p className="text-sm leading-relaxed" style={{ color: "#065F46" }}>
+                  Un asesor de <strong>iHelp Médica</strong> se comunicará contigo en breve
+                  para coordinar tu atención dentro del convenio de <strong>{empresa.nombre}</strong>.
+                </p>
+              </div>
+              <p className="text-sm leading-relaxed px-2" style={{ color: "var(--muted)" }}>
+                Ten a la mano tu credencial de trabajo o número de empleado
+                al momento de la llamada.
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold" style={{ color: "var(--text)" }}>
-              ¡Solicitud recibida!
-            </h1>
-            <p className="mt-2 text-sm" style={{ color: "var(--muted)" }}>
-              Tu solicitud fue enviada exitosamente.
-              Un asesor de {empresa.nombre} se pondrá en contacto contigo muy pronto.
+
+          <div className="rounded-2xl border p-4 space-y-1"
+            style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--subtle)" }}>
+              Folio de seguimiento
+            </p>
+            <p className="text-lg font-mono font-bold" style={{ color: "var(--accent)" }}>{folio}</p>
+            <p className="text-xs" style={{ color: "var(--subtle)" }}>
+              Guarda este número para dar seguimiento a tu solicitud.
             </p>
           </div>
-          <div className="rounded-xl p-3 text-xs" style={{ background: "var(--surface-2)", color: "var(--muted)" }}>
-            Folio: <span className="font-mono font-semibold" style={{ color: "var(--text)" }}>{folio}</span>
-          </div>
+
+          <p className="text-center text-xs" style={{ color: "var(--subtle)" }}>
+            Tu información está protegida con cifrado AES-256.
+          </p>
         </div>
       </div>
     )
