@@ -331,7 +331,12 @@ export default function ConvenioClient({
                     style={{ color: "var(--accent)", textDecoration: "underline" }}>
                     Aviso de Privacidad
                   </a>
-                  {" "}y el tratamiento de mis datos personales
+                  {" "}y los{" "}
+                  <a href="/terminos" target="_blank" rel="noopener noreferrer"
+                    style={{ color: "var(--accent)", textDecoration: "underline" }}>
+                    Términos y Condiciones
+                  </a>
+                  {" "}del servicio
                 </span>
               </label>
               {errors._privacidad && (
@@ -359,10 +364,23 @@ export default function ConvenioClient({
           </form>
         </section>
 
-        <p className="text-center text-xs pb-6" style={{ color: "var(--subtle)" }}>
-          Powered by{" "}
-          <span className="font-semibold" style={{ color: "var(--accent)" }}>iHelp Médica</span>
-        </p>
+        <div className="text-center text-xs pb-6 space-y-1" style={{ color: "var(--subtle)" }}>
+          <div className="flex items-center justify-center gap-3">
+            <a href="/privacidad" target="_blank" rel="noopener noreferrer"
+              style={{ color: "var(--muted)", textDecoration: "underline" }}>
+              Aviso de Privacidad
+            </a>
+            <span>·</span>
+            <a href="/terminos" target="_blank" rel="noopener noreferrer"
+              style={{ color: "var(--muted)", textDecoration: "underline" }}>
+              Términos y Condiciones
+            </a>
+          </div>
+          <p>
+            Powered by{" "}
+            <span className="font-semibold" style={{ color: "var(--accent)" }}>iHelp Médica</span>
+          </p>
+        </div>
       </main>
     </div>
   )
