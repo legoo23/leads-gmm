@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServiceClient, createClient } from "@/lib/supabase/server"
 import { encryptField, hashField, decryptField } from "@/lib/crypto"
-import { logAudit } from "@/lib/audit"
+import { logAudit, extractIP } from "@/lib/audit"
 import { normalizePhone, normalizeEmail, normalizeCurp } from "@/lib/utils"
 import { assertLicense } from "@/lib/license"
 
@@ -9,7 +9,7 @@ type Params = { params: Promise<{ id: string }> }
 
 const CLOSURE_ETAPAS = ["ganado", "no_viable", "perdido"]
 
-export async function GET(_req: NextRequest, { params }: Params) {
+export async function GET(req: NextRequest, { params }: Params) {
   assertLicense()
   const { id } = await params
   const supabase = await createClient()
@@ -24,6 +24,12 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 404 })
 
+  // R-06: ETag — evitar descifrar PII si el lead no ha cambiado
+  const etag = `"${Buffer.from(String(data.updated_at ?? data.fecha_captura)).toString("base64")}"`
+  if (req.headers.get("if-none-match") === etag) {
+    return new NextResponse(null, { status: 304, headers: { ETag: etag } })
+  }
+
   const decrypted = {
     ...data,
     telefono: decryptField(data.telefono_enc),
@@ -32,8 +38,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
     numero_poliza: decryptField(data.numero_poliza_enc),
   }
 
-  await logAudit({ accion: "view_lead", tabla: "leads", id_registro: id, id_usuario: user.id })
-  return NextResponse.json({ data: decrypted })
+  await logAudit({ accion: "view_lead", tabla: "leads", id_registro: id, id_usuario: user.id, ip: extractIP(req) })
+  return NextResponse.json({ data: decrypted }, { headers: { ETag: etag } })
 }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
@@ -103,33 +109,47 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (body.contacto_aseguradora_nombre !== undefined) updates.contacto_aseguradora_nombre = UP(body.contacto_aseguradora_nombre)
   if (body.notas_validacion       !== undefined) updates.notas_validacion       = UP(body.notas_validacion)
 
+  // Capturar estado previo para auditoría T-02 y auto-avance de etapa
+  const { data: current } = await svc.from("leads")
+    .select("etapa, diagnostico_principal, id_aseguradora, numero_poliza_enc, prioridad, id_medico, id_agente")
+    .eq("id", id)
+    .single()
+
   // Auto-advance etapa (skip if caller is explicitly setting it)
-  if (!body.etapa) {
-    const { data: current } = await svc.from("leads")
-      .select("etapa, diagnostico_principal, id_aseguradora, numero_poliza_enc")
-      .eq("id", id)
-      .single()
+  if (!body.etapa && current && !CLOSURE_ETAPAS.includes(current.etapa)) {
+    const mergedDiagnostico = body.diagnostico_principal || current.diagnostico_principal
+    const mergedAseguradora = body.id_aseguradora || current.id_aseguradora
+    const willHavePoliza = body.numero_poliza ? true : !!current.numero_poliza_enc
 
-    if (current && !CLOSURE_ETAPAS.includes(current.etapa)) {
-      const mergedDiagnostico = body.diagnostico_principal || current.diagnostico_principal
-      const mergedAseguradora = body.id_aseguradora || current.id_aseguradora
-      const willHavePoliza = body.numero_poliza ? true : !!current.numero_poliza_enc
-
-      if (current.etapa === "nuevo") {
-        updates.etapa = "contactado"
-        updates.fecha_contacto = new Date().toISOString()
-      } else if (current.etapa === "contactado" && mergedDiagnostico) {
-        updates.etapa = "necesidad_identificada"
-      } else if (current.etapa === "necesidad_identificada" && mergedAseguradora && willHavePoliza) {
-        updates.etapa = "seguro_identificado"
-      }
+    if (current.etapa === "nuevo") {
+      updates.etapa = "contactado"
+      updates.fecha_contacto = new Date().toISOString()
+    } else if (current.etapa === "contactado" && mergedDiagnostico) {
+      updates.etapa = "necesidad_identificada"
+    } else if (current.etapa === "necesidad_identificada" && mergedAseguradora && willHavePoliza) {
+      updates.etapa = "seguro_identificado"
     }
   }
 
   const { data, error } = await svc.from("leads").update(updates).eq("id", id).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  await logAudit({ accion: "update_lead", tabla: "leads", id_registro: id, id_usuario: user.id, metadata: { fields: Object.keys(body) } })
+  // T-02: registrar campos modificados y cambios de etapa/estado
+  // Solo guardamos claves de campos PII, nunca sus valores
+  const PII_FIELDS = new Set(["telefono_enc","email_enc","curp_enc","numero_poliza_enc","nombre_enc"])
+  const camposNoSensibles = Object.keys(body).filter(k => !PII_FIELDS.has(k))
+  await logAudit({
+    accion: "update_lead",
+    tabla: "leads",
+    id_registro: id,
+    id_usuario: user.id,
+    ip: extractIP(req),
+    metadata: {
+      campos: camposNoSensibles,
+      etapa_antes: current?.etapa ?? null,
+      etapa_despues: (updates.etapa as string) ?? current?.etapa ?? null,
+    },
+  })
   return NextResponse.json({ data })
 }
 
@@ -149,6 +169,6 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   const { error } = await svc.from("leads").delete().eq("id", id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  await logAudit({ accion: "delete_lead", tabla: "leads", id_registro: id, id_usuario: user.id })
+  await logAudit({ accion: "delete_lead", tabla: "leads", id_registro: id, id_usuario: user.id, ip: extractIP(_req) })
   return NextResponse.json({ ok: true })
 }

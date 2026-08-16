@@ -38,15 +38,22 @@ export async function GET(req: NextRequest) {
     .maybeSingle()
   if (!vendedor) return NextResponse.json({ error: "Vendedor no encontrado" }, { status: 404 })
 
-  const { data: leads, error } = await svc
-    .from("leads")
-    .select(`
-      id, folio, nombre, apellido_paterno, etapa, procedimiento, fecha_captura,
-      comisiones(id, monto, estado, fecha_conversion)
-    `)
-    .eq("id_vendedor", vendedor.id)
-    .order("fecha_captura", { ascending: false })
-    .limit(200)
+  // R-03: paginación para vendedores con historial extenso
+  const sp = req.nextUrl.searchParams
+  const limit  = Math.min(Math.max(parseInt(sp.get("limit")  ?? "50"), 1), 100)
+  const offset = Math.max(parseInt(sp.get("offset") ?? "0"), 0)
+
+  const [{ data: leads, error }, { count }] = await Promise.all([
+    svc.from("leads")
+      .select(`id, folio, nombre, apellido_paterno, etapa, procedimiento, fecha_captura,
+               comisiones(id, monto, estado, fecha_conversion)`)
+      .eq("id_vendedor", vendedor.id)
+      .order("fecha_captura", { ascending: false })
+      .range(offset, offset + limit - 1),
+    svc.from("leads")
+      .select("id", { count: "exact", head: true })
+      .eq("id_vendedor", vendedor.id),
+  ])
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
@@ -68,5 +75,5 @@ export async function GET(req: NextRequest) {
     }
   })
 
-  return NextResponse.json({ data: result, total: result.length })
+  return NextResponse.json({ data: result, total: count ?? 0, limit, offset })
 }

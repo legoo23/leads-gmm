@@ -14,6 +14,10 @@ interface AuditEntry {
   ip?: string
 }
 
+export function extractIP(req: Request): string | undefined {
+  return (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || undefined
+}
+
 export async function logAudit(entry: AuditEntry): Promise<void> {
   try {
     const svc = await createServiceClient()
@@ -25,8 +29,8 @@ export async function logAudit(entry: AuditEntry): Promise<void> {
       meta: entry.metadata ?? null,
       ip: entry.ip ?? null,
     })
-  } catch {
-    // Never interrupt main flow
+  } catch (err) {
+    console.error("[audit] Error al registrar evento:", err)
   }
 }
 

@@ -58,8 +58,10 @@ export function decryptField(ciphertext: string | null | undefined): string | nu
 // No es reversible — solo sirve para comparar, no para mostrar
 export function hashField(value: string | null | undefined): string | null {
   if (value == null || value === "") return null
+  const key = process.env.DATA_ENCRYPTION_KEY
+  if (!key) throw new Error("[leads-gmm] DATA_ENCRYPTION_KEY no configurada")
   return crypto
-    .createHmac("sha256", process.env.DATA_ENCRYPTION_KEY ?? "fallback-never-use-in-prod")
+    .createHmac("sha256", key)
     .update(value.toLowerCase().trim())
     .digest("hex")
 }

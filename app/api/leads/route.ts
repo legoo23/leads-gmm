@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServiceClient } from "@/lib/supabase/server"
 import { encryptField, hashField } from "@/lib/crypto"
-import { logAudit, sanitizeLimit } from "@/lib/audit"
+import { logAudit, sanitizeLimit, extractIP } from "@/lib/audit"
 import { normalizePhone, normalizeEmail, normalizeCurp, generateFolio } from "@/lib/utils"
 import { assertLicense } from "@/lib/license"
 import { createClient } from "@/lib/supabase/server"
@@ -24,7 +24,8 @@ export async function GET(req: NextRequest) {
   const fechaHasta   = sp.get("fecha_hasta")
   const conMedicoRed = sp.get("con_medico_red") === "true"
   const rawSearch    = sp.get("q")
-  const search       = rawSearch ? rawSearch.replace(/,/g, "").trim() : null
+  // S-05: escapar caracteres especiales de PostgREST antes de interpolar
+  const search       = rawSearch ? rawSearch.replace(/[(),%*.\\]/g, "").trim() : null
 
   const svc = await createServiceClient()
 
@@ -79,6 +80,15 @@ export async function GET(req: NextRequest) {
 
   const [{ data, error }, { count }] = await Promise.all([dataQuery, countQuery])
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // T-03: auditar acceso a la lista (filtros y total, no los datos en sí)
+  await logAudit({
+    accion: "list_leads",
+    tabla: "leads",
+    id_usuario: user.id,
+    ip: extractIP(req),
+    metadata: { filtros: { etapa, fuente, search: !!search, conMedicoRed }, total: count },
+  })
 
   return NextResponse.json({ data, total: count, limit, offset })
 }
@@ -149,6 +159,6 @@ export async function POST(req: NextRequest) {
   const { data, error } = await svc.from("leads").insert(row).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  await logAudit({ accion: "create_lead", tabla: "leads", id_registro: data.id, id_usuario: user.id })
+  await logAudit({ accion: "create_lead", tabla: "leads", id_registro: data.id, id_usuario: user.id, ip: extractIP(req) })
   return NextResponse.json({ data }, { status: 201 })
 }

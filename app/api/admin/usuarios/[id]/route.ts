@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServiceClient, createClient } from "@/lib/supabase/server"
 import { assertLicense } from "@/lib/license"
+import { logAudit, extractIP } from "@/lib/audit"
 
 type Params = { params: Promise<{ id: string }> }
 
-const ROLES_INTERNOS = ["admin", "gerente", "ejecutivo", "visualizador"]
+// S-03: roles alineados con CHECK constraint de BD (020_security_performance.sql)
+const ROLES_INTERNOS = ["admin", "supervisor", "agente", "gerente", "ejecutivo", "visualizador"]
 
 export async function PATCH(req: NextRequest, { params }: Params) {
   assertLicense()
@@ -41,6 +43,19 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const { data, error } = await svc.from("user_profiles").update(updates).eq("id", id).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // T-01: auditar cambios de usuario (incluyendo bajas)
+  const accion = body.activo !== undefined
+    ? (body.activo ? "reactivar_usuario" : "baja_usuario")
+    : "update_usuario"
+  await logAudit({
+    accion,
+    tabla: "user_profiles",
+    id_registro: id,
+    id_usuario: user.id,
+    ip: extractIP(req),
+    metadata: { campos: Object.keys(updates) },
+  })
 
   return NextResponse.json({ data })
 }

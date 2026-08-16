@@ -11,7 +11,10 @@ export async function GET(_req: NextRequest) {
   const svc = await createServiceClient()
   const { data, error } = await svc.from("niveles_comision").select("*").order("orden").order("id")
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data })
+  // R-04: niveles de comisión cambian raramente — cacheable 5 min
+  return NextResponse.json({ data }, {
+    headers: { "Cache-Control": "private, max-age=300, stale-while-revalidate=600" },
+  })
 }
 
 export async function POST(req: NextRequest) {

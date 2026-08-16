@@ -3,6 +3,7 @@ import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { createServiceClient } from "@/lib/supabase/server"
 import { assertLicense } from "@/lib/license"
+import { logAudit, extractIP } from "@/lib/audit"
 import type { Database } from "@/types/supabase"
 
 async function getUser() {
@@ -46,11 +47,21 @@ export async function PATCH(
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // T-01: auditar edición de aseguradora
+  await logAudit({
+    accion: "update_aseguradora",
+    tabla: "aseguradoras",
+    id_registro: id,
+    id_usuario: user?.id ?? "desconocido",
+    ip: extractIP(req),
+    metadata: { campos: Object.keys(patch) },
+  })
   return NextResponse.json({ data })
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   assertLicense()
@@ -69,5 +80,14 @@ export async function DELETE(
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // T-01: auditar desactivación de aseguradora
+  await logAudit({
+    accion: "delete_aseguradora",
+    tabla: "aseguradoras",
+    id_registro: id,
+    id_usuario: user?.id ?? "desconocido",
+    ip: extractIP(req),
+  })
   return NextResponse.json({ data })
 }

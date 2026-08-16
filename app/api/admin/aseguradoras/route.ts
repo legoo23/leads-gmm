@@ -3,6 +3,7 @@ import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { createServiceClient } from "@/lib/supabase/server"
 import { assertLicense } from "@/lib/license"
+import { logAudit, extractIP } from "@/lib/audit"
 import type { Database } from "@/types/supabase"
 
 async function getUser() {
@@ -28,7 +29,10 @@ export async function GET() {
     .order("nombre", { ascending: true })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data })
+  // R-04: catálogo cambia poco — cacheable 5 min, revalidación de 10 min
+  return NextResponse.json({ data }, {
+    headers: { "Cache-Control": "private, max-age=300, stale-while-revalidate=600" },
+  })
 }
 
 export async function POST(req: NextRequest) {
@@ -51,5 +55,14 @@ export async function POST(req: NextRequest) {
   }).select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // T-01: auditar creación de aseguradora
+  await logAudit({
+    accion: "create_aseguradora",
+    tabla: "aseguradoras",
+    id_registro: data.id,
+    id_usuario: user?.id ?? "desconocido",
+    ip: extractIP(req),
+  })
   return NextResponse.json({ data }, { status: 201 })
 }

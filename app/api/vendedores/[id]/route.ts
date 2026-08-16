@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServiceClient, createClient } from "@/lib/supabase/server"
-import { logAudit } from "@/lib/audit"
+import { logAudit, extractIP } from "@/lib/audit"
 import { normalizePhone, normalizeEmail } from "@/lib/utils"
 import { assertLicense } from "@/lib/license"
 
@@ -76,6 +76,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  await logAudit({ accion: "update_vendedor", tabla: "vendedores", id_registro: id, id_usuario: user.id })
+  // T-01: diferenciar baja/reactivación de edición general
+  const accion = body.activo !== undefined
+    ? (body.activo ? "reactivar_vendedor" : "baja_vendedor")
+    : "update_vendedor"
+  await logAudit({ accion, tabla: "vendedores", id_registro: id, id_usuario: user.id, ip: extractIP(req) })
   return NextResponse.json({ data })
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { assertLicense } from "@/lib/license"
 import { createServiceClient } from "@/lib/supabase/server"
 import { createClient } from "@/lib/supabase/server"
+import { logAudit, extractIP } from "@/lib/audit"
 
 async function getUser() {
   const supabase = await createClient()
@@ -56,6 +57,16 @@ export async function POST(req: Request) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // T-01: auditar envío de mensaje masivo o individual
+  await logAudit({
+    accion: "create_mensaje_vendedor",
+    tabla: "mensajes_vendedores",
+    id_registro: data.id,
+    id_usuario: user?.id ?? "desconocido",
+    ip: extractIP(req),
+    metadata: { destinatario, id_vendedor: idVendedor ?? null },
+  })
 
   return NextResponse.json({ mensaje: data }, { status: 201 })
 }

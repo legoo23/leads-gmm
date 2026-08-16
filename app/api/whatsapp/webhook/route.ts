@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase/server"
 import { encryptField, hashField } from "@/lib/crypto"
 import { normalizePhone, generateFolio } from "@/lib/utils"
 import { logAudit } from "@/lib/audit"
+import { assertLicense } from "@/lib/license"
 import crypto from "crypto"
 
 // ── Meta webhook verification ─────────────────────────────────────────────
@@ -18,6 +19,9 @@ export async function GET(req: NextRequest) {
 
 // ── Incoming messages ─────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
+  // S-01: assertLicense en todos los Route Handlers sin excepción
+  assertLicense()
+
   const rawBody = await req.text()
 
   const sig = req.headers.get("x-hub-signature-256")
@@ -74,6 +78,16 @@ export async function POST(req: NextRequest) {
     const activeSession  = isStale ? null : session
     const estado         = activeSession?.estado ?? "inicio"
     const datos          = (activeSession?.datos ?? {}) as BotData
+
+    // T-04: registrar mensaje entrante en trazabilidad
+    await svc.from("whatsapp_mensajes").insert({
+      wa_id: waId,
+      telefono_hash: telefonoHash,
+      direccion: "entrante",
+      contenido: msgType === "text" ? bodyText : null,
+      tipo_mensaje: msgType,
+      estado_bot: estado,
+    }).then(() => {})  // fire-and-forget, no bloquear el flujo
 
     const result = await runStateMachine({
       estado, bodyText, hasMedia, datos, displayName, waId,
@@ -152,6 +166,15 @@ export async function POST(req: NextRequest) {
 
     if (result.respuesta) {
       await sendWA(waId, result.respuesta)
+      // T-04: registrar respuesta saliente
+      await svc.from("whatsapp_mensajes").insert({
+        wa_id: waId,
+        telefono_hash: telefonoHash,
+        direccion: "saliente",
+        contenido: result.respuesta,
+        tipo_mensaje: "text",
+        estado_bot: result.nextEstado,
+      }).then(() => {})
     }
   } catch (err) {
     console.error("[WA webhook error]", err)

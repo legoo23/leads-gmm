@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServiceClient, createClient } from "@/lib/supabase/server"
 import { assertLicense } from "@/lib/license"
+import { logAudit, extractIP } from "@/lib/audit"
 
-const ROLES_INTERNOS = ["admin", "gerente", "ejecutivo", "visualizador"]
+// S-03: roles alineados con el CHECK constraint de la BD (020_security_performance.sql)
+const ROLES_INTERNOS = ["admin", "supervisor", "agente", "gerente", "ejecutivo", "visualizador"]
 
 export async function GET(_req: NextRequest) {
   assertLicense()
@@ -66,6 +68,16 @@ export async function POST(req: NextRequest) {
     await svc.auth.admin.deleteUser(authData.user.id)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
+
+  // T-01: auditar creación de usuario interno
+  await logAudit({
+    accion: "create_usuario",
+    tabla: "user_profiles",
+    id_registro: data.id,
+    id_usuario: user.id,
+    ip: extractIP(req),
+    metadata: { rol, nombre: nombre.trim() },
+  })
 
   return NextResponse.json({ data: { ...data, email: email.trim().toLowerCase() } }, { status: 201 })
 }
