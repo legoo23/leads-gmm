@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createServiceClient } from "@/lib/supabase/server"
 import { assertLicense } from "@/lib/license"
 import { encryptField, hashField } from "@/lib/crypto"
-import { normalizePhone, normalizeEmail, generateFolio } from "@/lib/utils"
+import { normalizePhone, normalizeEmail, normalizeCurp, generateFolio } from "@/lib/utils"
 import { extractIP, logAudit } from "@/lib/audit"
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -161,7 +161,7 @@ export async function POST(
     ...(emailRaw ? { email_enc: encryptField(emailRaw), email_hash: hashField(emailRaw) } : {}),
     fecha_nacimiento:  body.fecha_nacimiento || null,
     estado_ciudad:     body.estado_ciudad    || null,
-    curp:              body.curp ? String(body.curp).trim().toUpperCase() : null,
+    ...(body.curp ? (() => { const c = normalizeCurp(body.curp); return c ? { curp_enc: encryptField(c), curp_hash: hashField(c) } : {} })() : {}),
     notas:             body.notas            || null,
     id_empresa:        empresa.id,
     fuente:            "convenio",
