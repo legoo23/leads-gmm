@@ -28,6 +28,8 @@ export async function middleware(request: NextRequest) {
       "img-src 'self' data: blob: https://*.supabase.co https://s3.us-east-1.amazonaws.com",
       `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.amazonaws.com wss://*.amazonaws.com`,
       "font-src 'self' data: https://s3.us-east-1.amazonaws.com",
+      "frame-src https://s3.us-east-1.amazonaws.com https://*.amazonaws.com",
+      "media-src 'self' https://*.amazonaws.com",
       "object-src 'none'",
       "frame-ancestors 'none'",
     ].join("; ")
