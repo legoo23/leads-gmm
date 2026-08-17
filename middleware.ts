@@ -23,13 +23,11 @@ export async function middleware(request: NextRequest) {
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://s3.us-east-1.amazonaws.com",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "img-src 'self' data: blob: https://*.supabase.co https://s3.us-east-1.amazonaws.com",
-      `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.amazonaws.com wss://*.amazonaws.com https://api.backend.us1.inconcert.cloud wss://api.backend.us1.inconcert.cloud`,
-      "font-src 'self' data: https://s3.us-east-1.amazonaws.com https://fonts.gstatic.com",
-      "frame-src https://s3.us-east-1.amazonaws.com https://*.amazonaws.com",
-      "media-src 'self' https://*.amazonaws.com",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https://*.supabase.co",
+      `connect-src 'self' https://*.supabase.co wss://*.supabase.co`,
+      "font-src 'self' data:",
       "object-src 'none'",
       "frame-ancestors 'none'",
     ].join("; ")
