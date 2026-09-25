@@ -8,7 +8,7 @@ const VERDE_LIGHT = "#E1F5EE"
 const APP_URL     = process.env.NEXT_PUBLIC_APP_URL ?? "https://ihelpmedica.mx"
 
 const SHARE_MSG = (link: string) =>
-  `¿Tienes seguro de Gastos Médicos Mayores y necesitas una cirugía? Con iHelp Medica verificamos tu cobertura sin costo y coordinamos todo con tu aseguradora. Sin depósito para el paciente. Regístrate gratis aquí: ${link}`
+  `¿Buscas un especialista o necesitas una cirugía? En iHelp Médica te canalizamos con médicos y hospitales de nuestra red. Déjanos tus datos aquí: ${link}`
 
 type Social = { name: string; color: string; href: (link: string) => string; copyText?: boolean }
 
@@ -33,7 +33,7 @@ const SOCIALS: Social[] = [
     name: "X / Twitter",
     color: "#000000",
     href: (link) =>
-      `https://x.com/intent/tweet?text=${encodeURIComponent("¿Tienes seguro GMM y necesitas una cirugía? Verifica tu cobertura gratis con iHelp Medica 👇")}&url=${encodeURIComponent(link)}`,
+      `https://x.com/intent/tweet?text=${encodeURIComponent("¿Buscas un especialista o necesitas una cirugía? iHelp Médica te canaliza con su red médica 👇")}&url=${encodeURIComponent(link)}`,
   },
   {
     name: "Instagram",
