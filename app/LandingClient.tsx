@@ -71,16 +71,6 @@ const FAQS = [
     a: "Gracias a nuestros convenios de vinculación hospitalaria, garantizamos el pago directo de la aseguradora, eliminando la necesidad de que el paciente deje tarjetas o depósitos en garantía al ingresar." },
 ]
 
-// ── WhatsApp SVG ────────────────────────────────────────────────────────────
-
-function WhatsAppIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" viewBox="0 0 16 16">
-      <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.929 4.66c-.004 3.626-2.96 6.584-6.586 6.584zm3.624-4.926c-.199-.1-1.176-.58-1.357-.646-.182-.066-.314-.1-.446.1-.132.199-.512.646-.627.778-.116.132-.231.149-.43.05-.199-.1-.838-.309-1.596-.989-.589-.525-.987-1.174-1.103-1.373-.116-.199-.012-.306.087-.405.09-.089.199-.231.298-.347.1-.116.132-.199.199-.331.066-.132.033-.248-.017-.347-.05-.1-.446-1.075-.611-1.472-.161-.388-.325-.335-.446-.341-.114-.005-.247-.005-.38-.005-.132 0-.347.05-.529.248-.182.199-.694.679-.694 1.654 0 .975.71 1.916.81 2.049.1.132 1.396 2.132 3.381 2.99.473.204.841.326 1.129.417.474.15.904.129 1.244.079.379-.057 1.176-.48 1.342-.943.166-.463.166-.86.116-.943-.05-.083-.182-.133-.38-.232z"/>
-    </svg>
-  )
-}
-
 // ── Componente de campo de formulario ───────────────────────────────────────
 
 function Campo({ label, required, error, children }: {
@@ -461,17 +451,6 @@ export default function LandingClient({
           </div>
         </div>
       </footer>
-
-      {/* ── BOTÓN FLOTANTE WHATSAPP ── */}
-      <a href="https://wa.me/5215512345678?text=Hola%2C%20necesito%20asesoría%20para%20gestionar%20mi%20cirugía"
-        target="_blank" rel="noreferrer"
-        className="fixed bottom-6 right-6 z-50 text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-transform duration-300"
-        style={{ background: "#25D366" }}
-        aria-label="WhatsApp">
-        <WhatsAppIcon />
-        <span className="absolute top-0 right-0 block h-3 w-3 rounded-full bg-red-500 ring-2 ring-white animate-ping" />
-        <span className="absolute top-0 right-0 block h-3 w-3 rounded-full bg-red-500 ring-2 ring-white" />
-      </a>
 
     </div>
   )
