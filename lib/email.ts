@@ -1,7 +1,10 @@
 import { Resend } from "resend"
 import QRCode from "qrcode"
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Instancia diferida: el constructor de Resend lanza error si falta la API key,
+// lo que rompería `next build` en entornos sin RESEND_API_KEY (p. ej. Preview).
+let resend: Resend | null = null
+const getResend = () => (resend ??= new Resend(process.env.RESEND_API_KEY))
 
 const APP_URL   = process.env.NEXT_PUBLIC_APP_URL ?? "https://ihelpmedica.mx"
 const FROM_NAME = "iHelp Medica"
@@ -170,7 +173,7 @@ export async function sendWelcomeVendedor(v: VendedorEmailData): Promise<void> {
     color:  { dark: "#0F6E56", light: "#FFFFFF" },
   })
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from:    `${FROM_NAME} <${FROM_ADDR}>`,
     to:      [v.email],
     subject: `Bienvenido a iHelp Medica — Tu código: ${v.codigo_unico}`,
