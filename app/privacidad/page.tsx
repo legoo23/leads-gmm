@@ -1,9 +1,10 @@
 import Link from "next/link"
 import type { Metadata } from "next"
+import { Logo } from "@/components/brand/Logo"
 
 export const metadata: Metadata = {
-  title: "Aviso de Privacidad — iHelp Medica",
-  description: "Aviso de privacidad integral conforme a la LFPDPPP de iHelp Medica.",
+  title: "Aviso de Privacidad — iHelp Médica",
+  description: "Aviso de privacidad integral conforme a la LFPDPPP de iHelp Médica.",
 }
 
 const VERDE = "#0F6E56"
@@ -14,24 +15,22 @@ export default function PrivacidadPage() {
       {/* Navbar mínimo */}
       <nav className="border-b border-gray-100">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-2">
-          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold"
-              style={{ background: VERDE }}>+</div>
-            <span className="font-bold text-gray-800">iHelp Medica</span>
+          <Link href="/" className="hover:opacity-80 transition-opacity" aria-label="iHelp Médica — inicio">
+            <Logo size={32} textClass="text-lg" />
           </Link>
         </div>
       </nav>
 
       <main className="max-w-3xl mx-auto px-4 py-12">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Aviso de Privacidad Integral</h1>
-        <p className="text-sm text-gray-500 mb-8">Última actualización: agosto de 2026</p>
+        <p className="text-sm text-gray-500 mb-8">Última actualización: septiembre de 2026</p>
 
         <div className="prose prose-sm max-w-none text-gray-700 space-y-6">
 
           <section>
             <h2 className="text-base font-bold text-gray-900 mb-2">I. Identidad y domicilio del Responsable</h2>
             <p>
-              iHelp Medica (en adelante "el Responsable") es responsable del tratamiento de sus datos personales.
+              iHelp Médica (en adelante &ldquo;el Responsable&rdquo;) es responsable del tratamiento de sus datos personales.
               Domicilio: Ciudad de México, México. Contacto de privacidad:{" "}
               <a href="mailto:privacidad@ihelpmedica.mx" style={{ color: VERDE }}>privacidad@ihelpmedica.mx</a>.
             </p>
@@ -43,7 +42,8 @@ export default function PrivacidadPage() {
             <ul className="list-disc pl-5 space-y-1 mt-2">
               <li><strong>Identificación y contacto:</strong> nombre, apellidos, teléfono, correo electrónico y estado/ciudad.</li>
               <li><strong>Datos de salud (datos sensibles):</strong> diagnóstico, padecimiento, procedimiento quirúrgico de interés y condición médica general.</li>
-              <li><strong>Datos patrimoniales:</strong> aseguradora contratada y número de póliza de seguro de gastos médicos mayores.</li>
+              <li><strong>Datos patrimoniales (opcional):</strong> nombre de la aseguradora de gastos médicos, si decide indicarlo.</li>
+              <li><strong>Datos de contacto institucional:</strong> nombre, cargo, empresa, teléfono y correo de quienes solicitan información corporativa.</li>
             </ul>
             <p className="mt-2">
               Los datos de salud constituyen datos personales sensibles conforme a la{" "}
@@ -56,14 +56,13 @@ export default function PrivacidadPage() {
             <h2 className="text-base font-bold text-gray-900 mb-2">III. Finalidades del tratamiento</h2>
             <p><strong>Finalidades primarias (necesarias para la relación jurídica):</strong></p>
             <ul className="list-disc pl-5 space-y-1 mt-2">
-              <li>Contactarle para brindarle asesoría sobre la cobertura de su póliza GMM respecto al procedimiento quirúrgico de interés.</li>
-              <li>Gestionar y tramitar la autorización de cobertura ante su aseguradora.</li>
-              <li>Coordinar el ingreso hospitalario, el médico tratante y el proceso de alta administrativa.</li>
-              <li>Dar seguimiento a su expediente médico-administrativo durante el proceso.</li>
+              <li>Contactarle en respuesta a la solicitud que envió a través de este sitio.</li>
+              <li>Canalizarle con médicos y hospitales de la red de iHelp Médica según la especialidad o procedimiento de su interés.</li>
+              <li>Atender solicitudes de información de hospitales, aseguradoras, empresas y médicos, y preparar propuestas comerciales.</li>
             </ul>
             <p className="mt-3"><strong>Finalidades secundarias (opcionales):</strong></p>
             <ul className="list-disc pl-5 space-y-1 mt-2">
-              <li>Envío de comunicaciones informativas sobre procedimientos y coberturas de seguros.</li>
+              <li>Envío de comunicaciones informativas sobre los servicios de iHelp Médica y su red médica.</li>
               <li>Evaluación interna de calidad del servicio.</li>
             </ul>
             <p className="mt-2 text-sm text-gray-600">
@@ -79,9 +78,8 @@ export default function PrivacidadPage() {
               las finalidades descritas en el presente aviso:
             </p>
             <ul className="list-disc pl-5 space-y-1 mt-2">
-              <li><strong>Aseguradoras y compañías de seguros:</strong> para gestionar la autorización y cobertura del procedimiento quirúrgico.</li>
-              <li><strong>Hospitales y clínicas:</strong> para la programación del ingreso y atención médica.</li>
-              <li><strong>Médicos especialistas:</strong> para la coordinación de la atención quirúrgica.</li>
+              <li><strong>Hospitales y clínicas de la red:</strong> para que puedan contactarle y brindarle la atención que solicita.</li>
+              <li><strong>Médicos especialistas de la red:</strong> para que puedan contactarle y valorar su caso.</li>
             </ul>
             <p className="mt-2">
               Dichas transferencias son necesarias para la relación jurídica y no requieren su consentimiento expreso
@@ -143,7 +141,7 @@ export default function PrivacidadPage() {
 
         <div className="mt-10 pt-6 border-t border-gray-200">
           <Link href="/" className="text-sm font-medium" style={{ color: VERDE }}>
-            ← Regresar a iHelp Medica
+            ← Regresar a iHelp Médica
           </Link>
         </div>
       </main>
