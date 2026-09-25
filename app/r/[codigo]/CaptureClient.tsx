@@ -154,13 +154,13 @@ export default function CaptureClient({
                 <div className="flex items-start gap-2.5">
                   <MessageCircle size={16} style={{ color: "#059669", flexShrink: 0, marginTop: 1 }} />
                   <p className="text-sm leading-relaxed" style={{ color: "#065F46" }}>
-                    Un asesor médico certificado te contactará por <strong>WhatsApp</strong>.
+                    Un ejecutivo de iHelp Médica te contactará por <strong>WhatsApp</strong> para canalizarte con un especialista de nuestra red.
                   </p>
                 </div>
               </div>
               <p className="text-sm leading-relaxed px-2" style={{ color: "var(--muted)" }}>
-                Al contactarte, solicitaremos tu póliza de Gastos Médicos Mayores
-                para mayor análisis.
+                iHelp Médica no es una aseguradora: no brindamos asesoría sobre pólizas
+                ni ofrecemos descuentos, apoyos en deducible o coaseguro.
               </p>
             </div>
           </div>
@@ -197,7 +197,7 @@ export default function CaptureClient({
         </div>
         <div className="min-w-0">
           <div className="text-sm font-bold truncate" style={{ color: "var(--text)" }}>
-            Cirugía con seguro GMM
+            Especialistas y cirugía
           </div>
           <div className="text-xs truncate" style={{ color: "var(--muted)" }}>
             Asesor: {vendedorNombre}
@@ -215,11 +215,11 @@ export default function CaptureClient({
               <Shield size={15} color="white" />
             </div>
             <p className="text-sm font-bold" style={{ color: "#1D4ED8" }}>
-              Verificar mi cobertura gratis
+              Te canalizamos con nuestra red médica
             </p>
           </div>
           <div className="space-y-1 text-xs" style={{ color: "#3B82F6" }}>
-            <p>✓ No vendemos seguros. Validamos el que ya tienes pagado.</p>
+            <p>✓ No somos aseguradora ni agente de seguros.</p>
             <p>✓ Cero spam.</p>
             <p>✓ Tu información está protegida con cifrado AES-256.</p>
           </div>
@@ -409,13 +409,13 @@ export default function CaptureClient({
               opacity: saving ? 0.7 : 1,
               boxShadow: "0 4px 14px rgba(37,99,235,0.35)",
             }}>
-            {saving ? "Enviando..." : "Verificar mi cobertura gratis →"}
+            {saving ? "Enviando..." : "Quiero que me contacten →"}
           </button>
 
           {/* Trust */}
           <div className="rounded-xl p-3 space-y-1.5 text-xs text-center"
             style={{ background: "var(--surface-2)", color: "var(--muted)" }}>
-            <p>🔒 No vendemos seguros. Validamos el que ya tienes pagado.</p>
+            <p>🔒 No somos aseguradora ni agente de seguros.</p>
             <p>📵 Cero spam · Tu información está protegida con cifrado AES-256.</p>
           </div>
 

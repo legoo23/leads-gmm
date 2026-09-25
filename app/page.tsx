@@ -3,9 +3,9 @@ import { createServiceClient } from "@/lib/supabase/server"
 import LandingClient from "./LandingClient"
 
 export const metadata: Metadata = {
-  title: "iHelp Medica — Gestión de Cirugías con tu Seguro GMM",
+  title: "iHelp Médica — Que el trámite no detenga la atención",
   description:
-    "Gestiona tu cirugía sin depósito hospitalario. Tramitamos la autorización con tu aseguradora de gastos médicos mayores. Asesoría 100% gratuita.",
+    "Administrador tercero (TPA) para hospitales, aseguradoras y empresas: gestión de convenios, administración de casos, dictamen central y desarrollo comercial.",
 }
 
 export interface Testimonio {
